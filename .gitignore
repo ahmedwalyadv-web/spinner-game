@@ -1,0 +1,9 @@
+node_modules/
+test/
+data/*.db
+data/*.db-wal
+data/*.db-shm
+public/uploads/*
+!public/uploads/.gitkeep
+.env
+npm-debug.log

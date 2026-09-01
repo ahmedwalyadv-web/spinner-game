@@ -1,0 +1,14 @@
+services:
+  spinner:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - ADMIN_USERNAME=admin
+      - ADMIN_PASSWORD=change-me-please
+      - JWT_SECRET=please-change-this-to-a-long-random-string
+    volumes:
+      - ./data:/app/data
+      - ./public/uploads:/app/public/uploads
+    restart: unless-stopped

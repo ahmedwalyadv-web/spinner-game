@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>لوحة تحكم لعبة السبنر</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎡</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/admin/admin.css" />
+</head>
+<body>
+
+<!-- ===== شاشة تسجيل الدخول ===== -->
+<div id="view-login" class="view center-screen">
+  <form id="login-form" class="card login-card">
+    <div class="brand-mark">🎡</div>
+    <h1 data-i18n="login.title">تسجيل الدخول للوحة التحكم</h1>
+    <p class="muted" data-i18n="login.subtitle">لعبة السبنر - إدارة الكامبينات</p>
+    <label data-i18n="login.username">اسم المستخدم</label>
+    <input type="text" id="login-username" autocomplete="username" required />
+    <label data-i18n="login.password">كلمة المرور</label>
+    <input type="password" id="login-password" autocomplete="current-password" required />
+    <div id="login-error" class="error-text"></div>
+    <button type="submit" class="btn btn-primary btn-block" data-i18n="login.submit">دخول</button>
+  </form>
+</div>
+
+<!-- ===== الواجهة الرئيسية بعد الدخول ===== -->
+<div id="view-app" class="view app-shell" hidden>
+  <header class="topbar">
+    <div class="topbar-brand">🎡 <span data-i18n="app.title">لوحة تحكم السبنر</span></div>
+    <nav class="topbar-nav">
+      <button class="link-btn" id="nav-dashboard" data-i18n="nav.dashboard">الكامبينات</button>
+    </nav>
+    <div class="topbar-actions">
+      <button class="lang-toggle" id="lang-toggle">EN</button>
+      <button class="link-btn" id="btn-change-password" data-i18n="nav.password">كلمة المرور</button>
+      <button class="link-btn" id="btn-logout" data-i18n="nav.logout">خروج</button>
+    </div>
+  </header>
+
+  <!-- ---- لوحة الكامبينات ---- -->
+  <main id="view-dashboard" class="view-panel">
+    <div class="panel-header">
+      <h2 data-i18n="dash.title">الكامبينات</h2>
+      <button class="btn btn-primary" id="btn-new-campaign" data-i18n="dash.new">+ كامبين جديد</button>
+    </div>
+    <div id="campaigns-list" class="campaigns-grid"></div>
+  </main>
+
+  <!-- ---- محرر الكامبين ---- -->
+  <main id="view-editor" class="view-panel" hidden>
+    <div class="panel-header">
+      <button class="link-btn" id="btn-back-dashboard">→ <span data-i18n="editor.back">رجوع للكامبينات</span></button>
+      <div class="editor-title-wrap">
+        <input id="campaign-name-input" class="editor-title-input" />
+        <span class="status-pill" id="campaign-status-pill"></span>
+      </div>
+      <div class="editor-actions">
+        <button class="btn btn-ghost" id="btn-preview" data-i18n="editor.preview">👁 معاينة اللعبة</button>
+        <button class="btn btn-primary" id="btn-save" data-i18n="editor.save">💾 حفظ</button>
+      </div>
+    </div>
+
+    <div class="link-box">
+      <span data-i18n="editor.link">رابط اللعبة الخاص بالعميل:</span>
+      <code id="campaign-link-display"></code>
+      <button class="btn btn-sm" id="btn-copy-link" data-i18n="editor.copy">نسخ</button>
+      <input id="slug-edit-input" class="slug-input" placeholder="تخصيص الرابط (اختياري)" />
+      <span class="muted-sm" id="active-toggle-wrap">
+        <label class="switch">
+          <input type="checkbox" id="toggle-active" />
+          <span class="slider"></span>
+        </label>
+        <span data-i18n="editor.active">مفعّل</span>
+      </span>
+    </div>
+
+    <div class="tabs" id="editor-tabs">
+      <button class="tab-btn active" data-tab="theme" data-i18n="tab.theme">الهوية والألوان</button>
+      <button class="tab-btn" data-tab="logos" data-i18n="tab.logos">الشعارات</button>
+      <button class="tab-btn" data-tab="intro" data-i18n="tab.intro">شاشة المقدمة</button>
+      <button class="tab-btn" data-tab="form" data-i18n="tab.form">بيانات العميل</button>
+      <button class="tab-btn" data-tab="wheel" data-i18n="tab.wheel">عجلة الحظ</button>
+      <button class="tab-btn" data-tab="popups" data-i18n="tab.popups">نتيجة اللفة</button>
+      <button class="tab-btn" data-tab="leads" data-i18n="tab.leads">بيانات العملاء</button>
+    </div>
+
+    <div class="tab-content" id="tab-theme"></div>
+    <div class="tab-content" id="tab-logos" hidden></div>
+    <div class="tab-content" id="tab-intro" hidden></div>
+    <div class="tab-content" id="tab-form" hidden></div>
+    <div class="tab-content" id="tab-wheel" hidden></div>
+    <div class="tab-content" id="tab-popups" hidden></div>
+    <div class="tab-content" id="tab-leads" hidden></div>
+  </main>
+</div>
+
+<div id="toast" class="toast" hidden></div>
+<div id="modal-root"></div>
+
+<script src="/admin/admin.js"></script>
+</body>
+</html>
