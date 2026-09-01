@@ -5,7 +5,10 @@ const Database = require('better-sqlite3');
 const bcrypt = require('bcryptjs');
 const { v4: uuidv4 } = require('uuid');
 
-const DATA_DIR = path.join(__dirname, '..', 'data');
+// لو معرّف متغير بيئة DATA_DIR (مسار قرص دائم على الاستضافة) بنستخدمه، وإلا بنستخدم مجلد data المحلي
+const DATA_DIR = process.env.DATA_DIR
+  ? path.join(process.env.DATA_DIR, 'data')
+  : path.join(__dirname, '..', 'data');
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 
 const db = new Database(path.join(DATA_DIR, 'spinner.db'));

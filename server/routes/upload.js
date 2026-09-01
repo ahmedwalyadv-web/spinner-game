@@ -7,7 +7,10 @@ const { requireAuth } = require('../middleware/auth');
 
 const router = express.Router();
 
-const UPLOAD_DIR = path.join(__dirname, '..', '..', 'public', 'uploads');
+// لو معرّف متغير بيئة DATA_DIR (مسار قرص دائم على الاستضافة) بنخزن الصور جواه، وإلا بنستخدم public/uploads المحلي
+const UPLOAD_DIR = process.env.DATA_DIR
+  ? path.join(process.env.DATA_DIR, 'uploads')
+  : path.join(__dirname, '..', '..', 'public', 'uploads');
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
 const ALLOWED = new Set([

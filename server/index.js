@@ -19,7 +19,11 @@ app.use(express.json({ limit: '5mb' }));
 app.use(cookieParser());
 
 // ملفات ثابتة (الصور والفيديوهات المرفوعة + الواجهات)
-app.use('/uploads', express.static(path.join(__dirname, '..', 'public', 'uploads')));
+// لو معرّف متغير بيئة DATA_DIR (مسار قرص دائم على الاستضافة) بنقرأ الصور منه، وإلا من public/uploads المحلي
+const uploadsServeDir = process.env.DATA_DIR
+  ? path.join(process.env.DATA_DIR, 'uploads')
+  : path.join(__dirname, '..', 'public', 'uploads');
+app.use('/uploads', express.static(uploadsServeDir));
 app.use('/admin', express.static(path.join(__dirname, '..', 'public', 'admin')));
 app.use('/play', express.static(path.join(__dirname, '..', 'public', 'play')));
 
