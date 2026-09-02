@@ -54,6 +54,22 @@ CREATE INDEX IF NOT EXISTS idx_leads_campaign ON leads(campaign_id);
 CREATE INDEX IF NOT EXISTS idx_leads_created ON leads(created_at);
 `);
 
+// ترقيات بسيطة وآمنة على جداول موجودة بالفعل (بتتجاهل الخطأ لو العمود موجود أصلاً)
+function safeAlter(sql) {
+  try {
+    db.exec(sql);
+  } catch (e) {
+    // العمود موجود بالفعل من تشغيل سابق - تجاهل
+  }
+}
+safeAlter("ALTER TABLE campaigns ADD COLUMN stock_used TEXT NOT NULL DEFAULT '{}'");
+safeAlter("ALTER TABLE leads ADD COLUMN custom_fields TEXT DEFAULT '{}'");
+safeAlter("ALTER TABLE leads ADD COLUMN interest_ids TEXT DEFAULT '[]'");
+// رقم تليفون منظّف (أرقام فقط) عشان نقدر نتأكد بسرعة ودقة إن نفس الشخص ملعبش قبل كده
+safeAlter('ALTER TABLE leads ADD COLUMN phone_normalized TEXT');
+// فهرس على رقم التليفون يفيد في فحص "هل لعب قبل كده" بسرعة
+db.exec('CREATE INDEX IF NOT EXISTS idx_leads_campaign_phone ON leads(campaign_id, phone_normalized)');
+
 // إنشاء حساب أدمن افتراضي عند أول تشغيل فقط
 const adminCount = db.prepare('SELECT COUNT(*) AS c FROM admins').get().c;
 if (adminCount === 0) {

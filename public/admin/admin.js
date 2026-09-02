@@ -97,7 +97,8 @@
       'editor.back': 'رجوع للكامبينات', 'editor.preview': '👁 معاينة اللعبة', 'editor.save': '💾 حفظ',
       'editor.link': 'رابط اللعبة الخاص بالعميل:', 'editor.copy': 'نسخ', 'editor.active': 'مفعّل',
       'tab.theme': 'الهوية والألوان', 'tab.logos': 'الشعارات', 'tab.intro': 'شاشة المقدمة',
-      'tab.form': 'بيانات العميل', 'tab.wheel': 'عجلة الحظ', 'tab.popups': 'نتيجة اللفة', 'tab.leads': 'بيانات العملاء'
+      'tab.form': 'بيانات العميل', 'tab.wheel': 'عجلة الحظ', 'tab.popups': 'نتيجة اللفة',
+      'tab.integrations': 'ربط جوجل شيت', 'tab.leads': 'بيانات العملاء'
     },
     en: {
       'login.title': 'Admin Dashboard Login', 'login.subtitle': 'Spinner Game - Campaign Management',
@@ -107,7 +108,8 @@
       'editor.back': 'Back to campaigns', 'editor.preview': '👁 Preview Game', 'editor.save': '💾 Save',
       'editor.link': "Client's game link:", 'editor.copy': 'Copy', 'editor.active': 'Active',
       'tab.theme': 'Branding & Colors', 'tab.logos': 'Logos', 'tab.intro': 'Intro Screen',
-      'tab.form': 'Customer Info', 'tab.wheel': 'Lucky Wheel', 'tab.popups': 'Spin Result', 'tab.leads': 'Customer Data'
+      'tab.form': 'Customer Info', 'tab.wheel': 'Lucky Wheel', 'tab.popups': 'Spin Result',
+      'tab.integrations': 'Google Sheet Sync', 'tab.leads': 'Customer Data'
     }
   };
   let uiLang = localStorage.getItem('admin_ui_lang') || 'ar';
@@ -298,7 +300,7 @@
   /* ============ محرر الكامبين ============ */
   async function openEditor(id) {
     const data = await api('/campaigns/' + id);
-    state.campaign = { id: data.id, slug: data.slug, name: data.name, isActive: data.isActive };
+    state.campaign = { id: data.id, slug: data.slug, name: data.name, isActive: data.isActive, stockUsed: data.stockUsed || {} };
     state.cfg = data.config;
     showDashboardPanel(false);
     document.getElementById('campaign-name-input').value = data.name;
@@ -627,6 +629,11 @@
     });
 
     c.appendChild(el('div', { class: 'section-title' }, [uiLang === 'ar' ? 'قائمة الاهتمامات (تظهر كقائمة اختيار)' : 'Interests list (shown as a picker)']));
+    c.appendChild(el('p', { class: 'hint' }, [uiLang === 'ar'
+      ? 'لو ربطت اهتمام بجائزة معينة، أي عميل يختار الاهتمام ده هياخد الجائزة دي أكيد (طالما لسه متاح منها كمية في تبويب عجلة الحظ).'
+      : "If you link an interest to a specific prize, anyone who picks it is guaranteed that prize (as long as its stock isn't out, set in the Wheel tab)."]));
+    const segmentOptions = [{ value: '', label: uiLang === 'ar' ? 'بدون (عادي)' : 'None (normal)' }]
+      .concat((state.cfg.wheel.segments || []).map((s) => ({ value: s.id, label: currentLangText(s.label) || s.id })));
     const list = el('div', { class: 'card-list' });
     (state.cfg.form.interestsList || []).forEach((it, idx) => {
       list.appendChild(el('div', { class: 'item-card' }, [
@@ -637,14 +644,64 @@
         el('div', { class: 'field-row' }, [
           fieldText(uiLang === 'ar' ? 'الاسم (عربي)' : 'Name (Arabic)', `form.interestsList[${idx}].ar`),
           fieldText(uiLang === 'ar' ? 'الاسم (English)' : 'Name (English)', `form.interestsList[${idx}].en`)
-        ])
+        ]),
+        fieldSelect(uiLang === 'ar' ? '🎁 يجيب جائزة قيمة أكيدة' : '🎁 Guarantees a specific prize', `form.interestsList[${idx}].linkedSegmentId`, segmentOptions)
       ]));
     });
     c.appendChild(list);
     c.appendChild(el('button', { class: 'add-btn', onclick: () => {
-      state.cfg.form.interestsList.push({ id: uid('int'), ar: '', en: '' });
+      state.cfg.form.interestsList.push({ id: uid('int'), ar: '', en: '', linkedSegmentId: null });
       TAB_RENDERERS.form();
     } }, ['+ ' + (uiLang === 'ar' ? 'إضافة اهتمام' : 'Add interest')]));
+
+    c.appendChild(el('div', { class: 'section-title' }, [uiLang === 'ar' ? 'حقول تسجيل إضافية (حرة)' : 'Extra registration fields (custom)']));
+    c.appendChild(el('p', { class: 'hint' }, [uiLang === 'ar'
+      ? 'ضيف أي حقل تاني عايزه في فورم بيانات العميل - نص حر أو قائمة اختيار.'
+      : 'Add any other field you want in the customer form - free text or a picker list.']));
+    const cfList = el('div', { class: 'card-list' });
+    (state.cfg.form.customFields || []).forEach((cf, idx) => {
+      const base = `form.customFields[${idx}]`;
+      const rows = [
+        el('div', { class: 'item-head' }, [
+          el('span', { class: 'item-title' }, [uiLang === 'ar' ? 'حقل ' + (idx + 1) : 'Field ' + (idx + 1)]),
+          el('button', { class: 'icon-btn', onclick: () => { state.cfg.form.customFields.splice(idx, 1); TAB_RENDERERS.form(); } }, [uiLang === 'ar' ? 'حذف' : 'Delete'])
+        ]),
+        el('div', { class: 'field-row' }, [
+          fieldText(uiLang === 'ar' ? 'اسم الحقل (عربي)' : 'Field label (Arabic)', base + '.label.ar'),
+          fieldText(uiLang === 'ar' ? 'اسم الحقل (English)' : 'Field label (English)', base + '.label.en')
+        ]),
+        el('div', { class: 'field-row' }, [
+          fieldSelect(uiLang === 'ar' ? 'نوع الحقل' : 'Field type', base + '.type', [
+            { value: 'text', label: uiLang === 'ar' ? 'نص حر' : 'Free text' },
+            { value: 'select', label: uiLang === 'ar' ? 'قائمة اختيار' : 'Picker list' }
+          ]),
+          fieldToggle(uiLang === 'ar' ? 'إجباري' : 'Required', base + '.required')
+        ])
+      ];
+      if (cf.type === 'select') {
+        const optWrap = el('div', { class: 'card-list', style: 'margin-top:8px' });
+        (cf.options || []).forEach((opt, oIdx) => {
+          optWrap.appendChild(el('div', { class: 'field-row' }, [
+            fieldText(uiLang === 'ar' ? 'خيار (عربي)' : 'Option (Arabic)', `${base}.options[${oIdx}].ar`),
+            fieldText(uiLang === 'ar' ? 'خيار (English)' : 'Option (English)', `${base}.options[${oIdx}].en`),
+            el('button', { class: 'icon-btn', onclick: () => { cf.options.splice(oIdx, 1); TAB_RENDERERS.form(); } }, [uiLang === 'ar' ? 'حذف' : 'Delete'])
+          ]));
+        });
+        rows.push(optWrap);
+        rows.push(el('button', { class: 'add-btn', onclick: () => {
+          if (!cf.options) cf.options = [];
+          cf.options.push({ id: uid('opt'), ar: '', en: '' });
+          TAB_RENDERERS.form();
+        } }, ['+ ' + (uiLang === 'ar' ? 'إضافة خيار' : 'Add option')]));
+      }
+      cfList.appendChild(el('div', { class: 'item-card' }, rows));
+    });
+    c.appendChild(cfList);
+    c.appendChild(el('button', { class: 'add-btn', onclick: () => {
+      if (!state.cfg.form.customFields) state.cfg.form.customFields = [];
+      state.cfg.form.customFields.push({ id: uid('cf'), type: 'text', label: { ar: '', en: '' }, required: false, options: [] });
+      TAB_RENDERERS.form();
+    } }, ['+ ' + (uiLang === 'ar' ? 'إضافة حقل جديد' : 'Add new field')]));
   };
 
   /* ============ تبويب: عجلة الحظ ============ */
@@ -678,7 +735,7 @@
     c.appendChild(el('button', { class: 'add-btn', onclick: () => {
       state.cfg.wheel.segments.push({
         id: uid('seg'), label: { ar: 'قسم جديد', en: 'New segment' }, color: '#666666', textColor: '#ffffff',
-        type: 'win', weight: 10, guaranteedEvery: null, image: null, icon: null,
+        type: 'win', weight: 10, guaranteedEvery: null, stock: null, image: null, icon: null,
         text: { distancePct: 68, fontSize: 14, color: '#ffffff', showLabel: true }
       });
       TAB_RENDERERS.wheel();
@@ -711,6 +768,13 @@
         fieldNumber(uiLang === 'ar' ? 'نسبة الظهور (وزن)' : 'Appearance weight', base + '.weight', { min: 0, step: 1 }),
         fieldNumber(uiLang === 'ar' ? 'ضمان الظهور كل كام لفة (اتركه فاضي = بدون ضمان)' : 'Guaranteed every N spins (blank = none)', base + '.guaranteedEvery', { min: 0, step: 1 })
       ]),
+      el('div', { class: 'field-row' }, [
+        fieldNumber(uiLang === 'ar' ? 'الكمية المتاحة من الجائزة دي (اتركها فاضية = غير محدودة)' : 'Available quantity (blank = unlimited)', base + '.stock', { min: 0, step: 1 }),
+        el('div', { class: 'field' }, [
+          el('label', {}, [uiLang === 'ar' ? 'المتبقي حاليًا' : 'Remaining now']),
+          el('div', { class: 'muted-sm' }, [stockRemainingText(seg)])
+        ])
+      ]),
       el('div', { class: 'section-title', style: 'margin-top:14px' }, [uiLang === 'ar' ? 'محتوى القسم داخل العجلة' : 'Segment content on the wheel']),
       fieldUpload(uiLang === 'ar' ? 'صورة داخل القسم (اختياري)' : 'Image inside segment (optional)', base + '.image.url', { rerenderTab: 'wheel', onUploaded: (url) => { if (!getPath(state.cfg, base + '.image')) setPath(state.cfg, base + '.image', { url, distancePct: 40, widthPct: 22 }); else setPath(state.cfg, base + '.image.url', url); TAB_RENDERERS.wheel(); } }),
       el('div', { class: 'field-row' }, [
@@ -721,6 +785,15 @@
       fieldToggle(uiLang === 'ar' ? 'إظهار نص القسم' : 'Show segment label', base + '.text.showLabel')
     ]);
     return card;
+  }
+
+  function stockRemainingText(seg) {
+    if (seg.stock === null || seg.stock === undefined || seg.stock === '') {
+      return uiLang === 'ar' ? 'غير محدودة' : 'Unlimited';
+    }
+    const used = (state.campaign && state.campaign.stockUsed && state.campaign.stockUsed[seg.id]) || 0;
+    const remaining = Math.max(0, Number(seg.stock) - used);
+    return uiLang === 'ar' ? `${remaining} من ${seg.stock}` : `${remaining} of ${seg.stock}`;
   }
 
   function currentLangText(bilingual) {
@@ -819,6 +892,56 @@
     ]));
   };
 
+  /* ============ تبويب: ربط جوجل شيت ============ */
+  const APPS_SCRIPT_CODE = `function doPost(e) {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  var data = JSON.parse(e.postData.contents);
+  if (sheet.getLastRow() === 0) {
+    sheet.appendRow(['التاريخ والوقت','اسم الكامبين','الاسم','رقم التليفون','المنصب','الإيميل','الاهتمامات','بيانات إضافية','النتيجة','نوع النتيجة']);
+  }
+  sheet.appendRow([
+    data.createdAt || new Date(),
+    data.campaignName || '',
+    data.name || '',
+    data.phone || '',
+    data.position || '',
+    data.email || '',
+    (data.interests || []).join('، '),
+    data.customFieldsText || '',
+    data.resultLabel || '',
+    data.resultType === 'win' ? 'ربح' : 'حظ أوفر'
+  ]);
+  return ContentService.createTextOutput(JSON.stringify({ ok: true })).setMimeType(ContentService.MimeType.JSON);
+}`;
+
+  TAB_RENDERERS.integrations = function () {
+    const c = document.getElementById('tab-integrations');
+    c.innerHTML = '';
+    c.appendChild(el('div', { class: 'section-title' }, [uiLang === 'ar' ? '📊 مزامنة فورية مع Google Sheet' : '📊 Real-time Google Sheet sync']));
+    c.appendChild(el('p', { class: 'hint' }, [uiLang === 'ar'
+      ? 'كل مرة عميل يلعب وياخد نتيجة، بياناته هتتسجل فورًا في الشيت اللي تحدده هنا - مفيد عشان فريق استلام الهدايا يتأكد من بيانات العميل لحظيًا.'
+      : "Every time a customer plays and gets a result, their data is instantly logged to the sheet you set here - useful for the prize desk to verify a customer's details in real time."]));
+
+    c.appendChild(el('div', { class: 'item-card' }, [
+      el('div', { class: 'item-title' }, [uiLang === 'ar' ? 'خطوات الإعداد (مرة واحدة فقط)' : 'Setup steps (one-time only)']),
+      el('ol', { style: 'margin:8px 0 0;padding-inline-start:20px;line-height:1.9;font-size:13.5px;opacity:.9' }, [
+        el('li', {}, [uiLang === 'ar' ? 'افتح Google Sheets واعمل شيت جديد.' : 'Open Google Sheets and create a new sheet.']),
+        el('li', {}, [uiLang === 'ar' ? 'من قايمة Extensions اختار Apps Script.' : 'From the Extensions menu choose Apps Script.']),
+        el('li', {}, [uiLang === 'ar' ? 'امسح الكود الموجود وحط الكود ده بدل منه:' : 'Delete the existing code and paste this code instead:']),
+        el('li', {}, [uiLang === 'ar' ? 'من زرار Deploy الأزرق ← New deployment ← اختار النوع Web app.' : "Click the blue Deploy button → New deployment → select type Web app."]),
+        el('li', {}, [uiLang === 'ar' ? 'في "Who has access" اختار Anyone، وبعدين اضغط Deploy ووافق على الصلاحيات.' : 'Set "Who has access" to Anyone, then click Deploy and authorize it.']),
+        el('li', {}, [uiLang === 'ar' ? 'انسخ الرابط (Web app URL) اللي هيظهرلك، وحطه في الخانة تحت وسيب اللعبة تعمل الباقي.' : 'Copy the Web app URL it gives you and paste it in the field below - the game handles the rest.'])
+      ]),
+      el('pre', { style: 'background:#0b0d1a;border:1px solid var(--border);border-radius:10px;padding:12px;font-size:12px;overflow-x:auto;direction:ltr;text-align:left;margin-top:12px' }, [APPS_SCRIPT_CODE]),
+      el('button', { class: 'btn btn-sm btn-ghost', style: 'margin-top:8px', onclick: () => { navigator.clipboard.writeText(APPS_SCRIPT_CODE); toast(uiLang === 'ar' ? 'تم نسخ الكود' : 'Code copied', 'success'); } }, [uiLang === 'ar' ? '📋 نسخ الكود' : '📋 Copy code'])
+    ]));
+
+    c.appendChild(el('div', { class: 'item-card' }, [
+      fieldText(uiLang === 'ar' ? 'رابط Web App' : 'Web App URL', 'integrations.googleSheetWebhookUrl', { type: 'url' }),
+      el('p', { class: 'hint' }, [uiLang === 'ar' ? 'سيبه فاضي لو مش عايز المزامنة دي دلوقتي.' : "Leave it empty if you don't want this sync right now."])
+    ]));
+  };
+
   /* ============ تبويب: بيانات العملاء ============ */
   TAB_RENDERERS.leads = function () {
     const c = document.getElementById('tab-leads');
@@ -826,7 +949,7 @@
     const header = el('div', { class: 'panel-header', style: 'margin-bottom:14px' }, [
       el('div', { class: 'muted-sm' }, [uiLang === 'ar' ? 'كل العملاء اللي لعبوا الكامبين ده' : 'All customers who played this campaign']),
       el('div', {}, [
-        el('button', { class: 'btn btn-sm btn-ghost', onclick: () => { state.cfg.__resetRequested = true; confirmModal(uiLang === 'ar' ? 'هل تريد تصفير عداد اللفات وضمانات الجوائز لهذا الكامبين؟' : 'Reset spin counter and guaranteed-prize progress for this campaign?', async () => { await api('/campaigns/' + state.campaign.id + '/reset-stats', { method: 'POST' }); toast(uiLang === 'ar' ? 'تم التصفير' : 'Reset done', 'success'); }); } }, [uiLang === 'ar' ? '↺ تصفير عداد اللفات' : '↺ Reset spin counter']),
+        el('button', { class: 'btn btn-sm btn-ghost', onclick: () => { state.cfg.__resetRequested = true; confirmModal(uiLang === 'ar' ? 'هل تريد تصفير عداد اللفات وضمانات الجوائز وكميات المخزون لهذا الكامبين؟' : 'Reset spin counter, guaranteed-prize progress and stock quantities for this campaign?', async () => { await api('/campaigns/' + state.campaign.id + '/reset-stats', { method: 'POST' }); state.campaign.stockUsed = {}; toast(uiLang === 'ar' ? 'تم التصفير' : 'Reset done', 'success'); }); } }, [uiLang === 'ar' ? '↺ تصفير عداد اللفات' : '↺ Reset spin counter']),
         el('button', { class: 'btn btn-sm btn-primary', onclick: () => { window.location.href = '/api/campaigns/' + state.campaign.id + '/leads/export'; } }, [uiLang === 'ar' ? '⬇ تصدير إكسل' : '⬇ Export Excel'])
       ])
     ]);
@@ -848,20 +971,29 @@
         el('th', {}, [uiLang === 'ar' ? 'المنصب' : 'Position']),
         el('th', {}, [uiLang === 'ar' ? 'الإيميل' : 'Email']),
         el('th', {}, [uiLang === 'ar' ? 'الاهتمامات' : 'Interests']),
+        el('th', {}, [uiLang === 'ar' ? 'بيانات إضافية' : 'Extra info']),
         el('th', {}, [uiLang === 'ar' ? 'النتيجة' : 'Result']),
         el('th', {}, [uiLang === 'ar' ? 'التاريخ' : 'Date']),
         el('th', {}, [''])
       ])]);
       const tbody = el('tbody');
+      const customFieldsDefs = state.cfg.form.customFields || [];
       data.leads.forEach((l) => {
         let interests = [];
         try { interests = JSON.parse(l.interests || '[]'); } catch (e) {}
+        let customValues = {};
+        try { customValues = JSON.parse(l.custom_fields || '{}'); } catch (e) {}
+        const customText = customFieldsDefs
+          .filter((def) => customValues[def.id])
+          .map((def) => `${(def.label && (def.label[uiLang] || def.label.ar)) || def.id}: ${customValues[def.id]}`)
+          .join('، ');
         tbody.appendChild(el('tr', {}, [
           el('td', {}, [l.name]),
           el('td', {}, [l.phone]),
           el('td', {}, [l.position || '-']),
           el('td', {}, [l.email || '-']),
           el('td', {}, [Array.isArray(interests) ? interests.join('، ') : '-']),
+          el('td', {}, [customText || '-']),
           el('td', {}, [l.result_label || '-']),
           el('td', {}, [new Date(l.created_at).toLocaleString(uiLang === 'ar' ? 'ar-EG' : 'en-US')]),
           el('td', {}, [el('button', { class: 'icon-btn', onclick: async () => { await api('/campaigns/' + state.campaign.id + '/leads/' + l.id, { method: 'DELETE' }); TAB_RENDERERS.leads(); } }, [uiLang === 'ar' ? 'حذف' : 'Del'])])

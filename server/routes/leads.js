@@ -24,7 +24,15 @@ router.get('/export', async (req, res) => {
     .prepare('SELECT * FROM leads WHERE campaign_id = ? ORDER BY created_at DESC')
     .all(campaignId);
 
-  const workbook = await buildLeadsWorkbook(leads, campaign.name);
+  let customFieldsDefs = [];
+  try {
+    const config = JSON.parse(campaign.config || '{}');
+    customFieldsDefs = Array.isArray(config.form && config.form.customFields) ? config.form.customFields : [];
+  } catch (e) {
+    customFieldsDefs = [];
+  }
+
+  const workbook = await buildLeadsWorkbook(leads, campaign.name, customFieldsDefs);
   const fileName = `${campaign.name.replace(/[^\w؀-ۿ\-]+/g, '_')}_leads.xlsx`;
 
   res.setHeader(

@@ -38,12 +38,22 @@ function defaultCampaignConfig(name) {
         interests: { enabled: true, required: false, label: { ar: 'الاهتمامات', en: 'Interests' }, multiSelect: true }
       },
       interestsList: [
-        { id: 'i1', ar: 'تكنولوجيا', en: 'Technology' },
-        { id: 'i2', ar: 'موضة', en: 'Fashion' },
-        { id: 'i3', ar: 'رياضة', en: 'Sports' },
-        { id: 'i4', ar: 'سفر', en: 'Travel' }
+        // linkedSegmentId: لو محدد، اللي يختار الاهتمام ده يتضمنله (لو الكمية متاحة) قسم الجائزة المرتبط بيه
+        { id: 'i1', ar: 'تكنولوجيا', en: 'Technology', linkedSegmentId: null },
+        { id: 'i2', ar: 'موضة', en: 'Fashion', linkedSegmentId: null },
+        { id: 'i3', ar: 'رياضة', en: 'Sports', linkedSegmentId: null },
+        { id: 'i4', ar: 'سفر', en: 'Travel', linkedSegmentId: null }
       ],
-      submitButtonText: { ar: 'دور العجلة', en: 'Spin the Wheel' }
+      // حقول حرة إضافية يضيفها الأدمن بنفسه (نص أو قائمة اختيار)
+      customFields: [
+        // { id, type:'text'|'select', label:{ar,en}, required:boolean, options:[{id,ar,en}] }
+      ],
+      submitButtonText: { ar: 'دور العجلة', en: 'Spin the Wheel' },
+      duplicatePhoneMessage: { ar: 'لقد شاركت من قبل، شكرًا لمشاركتك 🙏', en: "You've already participated, thanks for playing 🙏" }
+    },
+    integrations: {
+      // رابط Google Apps Script Web App - لو موجود، كل عملية لعب بتتسجل فورًا في Google Sheet المربوط بيه
+      googleSheetWebhookUrl: ''
     },
     wheel: {
       sizePct: 90,
@@ -54,12 +64,12 @@ function defaultCampaignConfig(name) {
       centerImage: '',
       pointerColor: '#ffb703',
       segments: [
-        seg('s1', 'خصم 10%', 'Discount 10%', '#ff477e', 'win', 20, null),
-        seg('s2', 'حظ أوفر المرة الجاية', 'Better Luck Next Time', '#3a3f66', 'lose', 40, null),
-        seg('s3', 'هدية مفاجأة', 'Surprise Gift', '#ffb703', 'win', 15, 10),
-        seg('s4', 'كوبون شحن', 'Voucher', '#06d6a0', 'win', 15, null),
-        seg('s5', 'حظ أوفر المرة الجاية', 'Better Luck Next Time', '#3a3f66', 'lose', 5, null),
-        seg('s6', 'الجائزة الكبرى', 'Grand Prize', '#118ab2', 'win', 5, 25)
+        seg('s1', 'خصم 10%', 'Discount 10%', '#ff477e', 'win', 20, null, null),
+        seg('s2', 'حظ أوفر المرة الجاية', 'Better Luck Next Time', '#3a3f66', 'lose', 40, null, null),
+        seg('s3', 'هدية مفاجأة', 'Surprise Gift', '#ffb703', 'win', 15, 10, null),
+        seg('s4', 'كوبون شحن', 'Voucher', '#06d6a0', 'win', 15, null, null),
+        seg('s5', 'حظ أوفر المرة الجاية', 'Better Luck Next Time', '#3a3f66', 'lose', 5, null, null),
+        seg('s6', 'الجائزة الكبرى', 'Grand Prize', '#118ab2', 'win', 5, 25, null)
       ]
     },
     resultPopup: {
@@ -81,7 +91,7 @@ function defaultCampaignConfig(name) {
   };
 }
 
-function seg(id, ar, en, color, type, weight, guaranteedEvery) {
+function seg(id, ar, en, color, type, weight, guaranteedEvery, stock) {
   return {
     id,
     label: { ar, en },
@@ -90,6 +100,7 @@ function seg(id, ar, en, color, type, weight, guaranteedEvery) {
     type, // 'win' | 'lose'
     weight, // نسبة الظهور العشوائية (النسب بتتطبع تلقائيًا لمجموع 100)
     guaranteedEvery: guaranteedEvery || null, // لو موجودة: القسم ده مضمون كل N لفة
+    stock: stock || null, // لو موجودة: الكمية الكلية المتاحة من الجائزة دي (null = غير محدودة)
     // المسافة والحجم بيتحسبوا نسبة لمركز العجلة عشان يتناسبوا مع شكل القطاع الدائري
     image: null, // { url, distancePct, widthPct }
     icon: null, // { value, distancePct, sizePct }  value ممكن يكون إيموجي أو رمز نصي

@@ -67,6 +67,7 @@ router.get('/:id', (req, res) => {
     isActive: !!c.is_active,
     config: JSON.parse(c.config),
     spinCount: c.spin_count,
+    stockUsed: JSON.parse(c.stock_used || '{}'),
     createdAt: c.created_at,
     updatedAt: c.updated_at
   });
@@ -132,7 +133,7 @@ router.post('/:id/duplicate', (req, res) => {
 router.post('/:id/reset-stats', (req, res) => {
   const c = db.prepare('SELECT id FROM campaigns WHERE id = ?').get(req.params.id);
   if (!c) return res.status(404).json({ error: 'الكامبين غير موجود' });
-  db.prepare(`UPDATE campaigns SET spin_count = 0, segment_stats = '{}', updated_at = ? WHERE id = ?`).run(
+  db.prepare(`UPDATE campaigns SET spin_count = 0, segment_stats = '{}', stock_used = '{}', updated_at = ? WHERE id = ?`).run(
     new Date().toISOString(),
     c.id
   );

@@ -1,7 +1,8 @@
 // تصدير بيانات العملاء (Leads) إلى ملف إكسل منظم وجاهز للفتح في Excel
 const ExcelJS = require('exceljs');
 
-async function buildLeadsWorkbook(leads, campaignName) {
+async function buildLeadsWorkbook(leads, campaignName, customFieldsDefs) {
+  customFieldsDefs = Array.isArray(customFieldsDefs) ? customFieldsDefs : [];
   const workbook = new ExcelJS.Workbook();
   workbook.creator = 'Spinner Game';
   workbook.created = new Date();
@@ -10,16 +11,23 @@ async function buildLeadsWorkbook(leads, campaignName) {
     views: [{ rightToLeft: true, state: 'frozen', ySplit: 1 }]
   });
 
-  sheet.columns = [
+  const baseColumns = [
     { header: 'الاسم', key: 'name', width: 24 },
     { header: 'رقم التليفون', key: 'phone', width: 18 },
     { header: 'المنصب', key: 'position', width: 20 },
     { header: 'البريد الإلكتروني', key: 'email', width: 28 },
-    { header: 'الاهتمامات', key: 'interests', width: 30 },
+    { header: 'الاهتمامات', key: 'interests', width: 30 }
+  ];
+  const customColumns = customFieldsDefs.map((def) => ({
+    header: (def.label && def.label.ar) || def.id,
+    key: 'cf_' + def.id,
+    width: 22
+  }));
+  sheet.columns = baseColumns.concat(customColumns, [
     { header: 'النتيجة', key: 'result_label', width: 26 },
     { header: 'نوع النتيجة', key: 'result_type', width: 14 },
     { header: 'تاريخ ووقت اللعب', key: 'created_at', width: 22 }
-  ];
+  ]);
 
   const headerRow = sheet.getRow(1);
   headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 12 };
@@ -37,7 +45,13 @@ async function buildLeadsWorkbook(leads, campaignName) {
     } catch (e) {
       interests = [];
     }
-    const row = sheet.addRow({
+    let customValues = {};
+    try {
+      customValues = JSON.parse(lead.custom_fields || '{}');
+    } catch (e) {
+      customValues = {};
+    }
+    const rowData = {
       name: lead.name,
       phone: lead.phone,
       position: lead.position || '',
@@ -46,7 +60,11 @@ async function buildLeadsWorkbook(leads, campaignName) {
       result_label: lead.result_label || '',
       result_type: lead.result_type === 'win' ? 'ربح' : lead.result_type === 'lose' ? 'حظ أوفر' : '',
       created_at: new Date(lead.created_at).toLocaleString('ar-EG', { timeZone: 'Africa/Cairo' })
+    };
+    customFieldsDefs.forEach((def) => {
+      rowData['cf_' + def.id] = customValues[def.id] || '';
     });
+    const row = sheet.addRow(rowData);
     row.alignment = { vertical: 'middle', horizontal: 'right' };
   }
 

@@ -167,6 +167,48 @@
       $('label-interests').textContent = t(fields.interests.label) + (fields.interests.required ? ' *' : '');
       buildInterestsPanel();
     }
+
+    buildCustomFields();
+  }
+
+  /* ============ الحقول الحرة اللي ضافها الأدمن ============ */
+  let customFieldValues = {};
+  function buildCustomFields() {
+    const container = $('custom-fields-container');
+    container.innerHTML = '';
+    customFieldValues = {};
+    const defs = config.form.customFields || [];
+    defs.forEach((def) => {
+      const wrap = document.createElement('div');
+      wrap.className = 'form-field';
+      const label = document.createElement('label');
+      label.textContent = t(def.label) + (def.required ? ' *' : '');
+      wrap.appendChild(label);
+
+      if (def.type === 'select') {
+        const select = document.createElement('select');
+        select.id = 'custom-field-' + def.id;
+        const emptyOpt = document.createElement('option');
+        emptyOpt.value = '';
+        emptyOpt.textContent = playerLang === 'ar' ? 'اختر...' : 'Select...';
+        select.appendChild(emptyOpt);
+        (def.options || []).forEach((opt) => {
+          const o = document.createElement('option');
+          o.value = opt.id;
+          o.textContent = t(opt);
+          select.appendChild(o);
+        });
+        select.addEventListener('change', () => { customFieldValues[def.id] = select.value; });
+        wrap.appendChild(select);
+      } else {
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.id = 'custom-field-' + def.id;
+        input.addEventListener('input', () => { customFieldValues[def.id] = input.value; });
+        wrap.appendChild(input);
+      }
+      container.appendChild(wrap);
+    });
   }
 
   function setField(key, fieldCfg) {
@@ -215,7 +257,7 @@
     }
   }
 
-  $('lead-form').addEventListener('submit', (e) => {
+  $('lead-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const fields = config.form.fields;
     const errBox = $('form-error');
@@ -246,13 +288,45 @@
       errBox.textContent = playerLang === 'ar' ? 'من فضلك اختر اهتماماتك' : 'Please select your interests';
       return;
     }
+    for (const def of (config.form.customFields || [])) {
+      if (def.required && !(customFieldValues[def.id] || '').trim()) {
+        errBox.textContent = (playerLang === 'ar' ? 'من فضلك أدخل: ' : 'Please enter: ') + t(def.label);
+        return;
+      }
+    }
 
-    const interestLabels = (config.form.interestsList || [])
-      .filter((it) => selectedInterests.includes(it.id))
-      .map((it) => it.ar || it.en);
+    const submitBtn = $('btn-submit');
+    submitBtn.disabled = true;
+    try {
+      if (fields.phone.enabled && phone) {
+        const checkRes = await fetch('/api/public/campaigns/' + encodeURIComponent(slug) + '/check-phone', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phone })
+        });
+        const checkData = await checkRes.json();
+        if (checkData.alreadyPlayed) {
+          errBox.textContent = t(config.form.duplicatePhoneMessage) || (playerLang === 'ar' ? 'لقد شاركت من قبل' : "You've already participated");
+          return;
+        }
+      }
 
-    formData = { name, phone, position, email, interests: interestLabels };
-    showScreen('wheel');
+      const interestLabels = (config.form.interestsList || [])
+        .filter((it) => selectedInterests.includes(it.id))
+        .map((it) => it.ar || it.en);
+
+      formData = {
+        name, phone, position, email,
+        interests: interestLabels,
+        interestIds: selectedInterests.slice(),
+        customFields: { ...customFieldValues }
+      };
+      showScreen('wheel');
+    } catch (err) {
+      errBox.textContent = playerLang === 'ar' ? 'حدث خطأ، حاول تاني' : 'Something went wrong, please try again';
+    } finally {
+      submitBtn.disabled = false;
+    }
   });
 
   /* ============ شاشة العجلة ============ */
@@ -420,12 +494,16 @@
   function showResult(data) {
     const popupCfg = data.resultPopup;
     $('result-title').textContent = t(popupCfg.title);
+    $('result-name').textContent = formData.name ? (playerLang === 'ar' ? 'مبروك يا ' : 'Congrats ') + formData.name + '!' : '';
     $('result-subtitle').textContent = t(popupCfg.subtitle);
     $('result-prize').textContent = t(data.winner.label);
     $('btn-result-close').textContent = t(popupCfg.buttonText);
 
+    // بنفضّل صورة الجائزة نفسها من العجلة، ولو مش موجودة نستخدم صورة البوب أب العامة
     const img = $('result-image');
-    if (popupCfg.imageUrl) { img.src = popupCfg.imageUrl; img.hidden = false; } else img.hidden = true;
+    const segImageUrl = data.winner.image && data.winner.image.url;
+    const imageToShow = segImageUrl || popupCfg.imageUrl;
+    if (imageToShow) { img.src = imageToShow; img.hidden = false; } else img.hidden = true;
 
     $('result-overlay').hidden = false;
 
@@ -445,6 +523,7 @@
     canvas.style.transform = 'rotate(0deg)';
     wheelRotation = 0;
     selectedInterests = [];
+    customFieldValues = {};
     document.getElementById('lead-form').reset();
     updateInterestsButtonLabel();
     $('btn-spin').disabled = false;
