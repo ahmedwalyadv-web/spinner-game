@@ -29,14 +29,34 @@
     return data.url;
   }
 
+  // نطق النطق الصوتي فيه علة معروفة في كروم: نداء cancel() ومباشرة speak() في نفس اللحظة ممكن يخلي
+  // الجملة الجديدة تتجاهل بصمت من غير أي صوت - فبنستنى شوية لما يكون فيه كلام بيتقال قبل كده،
+  // وبنعمل "تسخين" لقايمة الأصوات بدري عشان كروم يحمّلها (أول نداء أحيانًا بيرجع قايمة فاضية).
+  if (window.speechSynthesis) {
+    try { window.speechSynthesis.getVoices(); } catch (e) {}
+  }
   function previewSpeak(text, lang) {
     if (!text) return;
+    if (!('speechSynthesis' in window)) {
+      toast(uiLang === 'ar' ? 'المتصفح ده مش بيدعم النطق الصوتي (Text-to-Speech)' : 'This browser does not support text-to-speech', 'error');
+      return;
+    }
     try {
-      window.speechSynthesis.cancel();
-      const u = new SpeechSynthesisUtterance(text);
-      u.lang = lang === 'en' ? 'en-US' : 'ar-SA';
-      window.speechSynthesis.speak(u);
-    } catch (e) {}
+      const speakNow = () => {
+        const u = new SpeechSynthesisUtterance(text);
+        u.lang = lang === 'en' ? 'en-US' : 'ar-SA';
+        u.onerror = () => toast(uiLang === 'ar' ? 'تعذّر تشغيل الصوت - جرب متصفح تاني أو تأكد إن صوت العربي متثبت على جهازك' : 'Could not play the voice - try another browser or make sure an Arabic voice is installed on your device', 'error');
+        window.speechSynthesis.speak(u);
+      };
+      if (window.speechSynthesis.speaking || window.speechSynthesis.pending) {
+        window.speechSynthesis.cancel();
+        setTimeout(speakNow, 80);
+      } else {
+        speakNow();
+      }
+    } catch (e) {
+      toast(e.message, 'error');
+    }
   }
 
   function toast(msg, type) {

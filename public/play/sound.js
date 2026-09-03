@@ -41,14 +41,27 @@
     return !!(cfg && cfg.sound && cfg.sound.enabled !== false);
   }
 
+  // "تسخين" قايمة أصوات المتصفح بدري - كروم أحيانًا بيرجّع قايمة فاضية أول ما الصفحة تفتح
+  if (window.speechSynthesis) {
+    try { window.speechSynthesis.getVoices(); } catch (e) {}
+  }
+
   function speak(text, lang) {
-    if (!text || !soundOn()) return;
+    if (!text || !soundOn() || !('speechSynthesis' in window)) return;
     try {
-      window.speechSynthesis.cancel();
-      const u = new SpeechSynthesisUtterance(text);
-      u.lang = lang === 'en' ? 'en-US' : 'ar-SA';
-      u.rate = 1;
-      window.speechSynthesis.speak(u);
+      const speakNow = () => {
+        const u = new SpeechSynthesisUtterance(text);
+        u.lang = lang === 'en' ? 'en-US' : 'ar-SA';
+        u.rate = 1;
+        window.speechSynthesis.speak(u);
+      };
+      // نداء cancel() ومباشرة speak() في نفس اللحظة ممكن يخلي كروم يتجاهل الجملة الجديدة بصمت
+      if (window.speechSynthesis.speaking || window.speechSynthesis.pending) {
+        window.speechSynthesis.cancel();
+        setTimeout(speakNow, 80);
+      } else {
+        speakNow();
+      }
     } catch (e) {}
   }
 
