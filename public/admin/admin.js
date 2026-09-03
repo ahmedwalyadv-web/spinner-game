@@ -35,6 +35,20 @@
   if (window.speechSynthesis) {
     try { window.speechSynthesis.getVoices(); } catch (e) {}
   }
+  // بنفضّل صوت "محلي" (مثبت على الجهاز) بنفس لغة النص لو موجود، عشان نتجنب الأصوات "عبر الشبكة"
+  // اللي ممكن تتعطل لو الإنترنت/الشبكة عندك بتمنع الاتصال بسيرفرات جوجل الصوتية
+  function pickVoice(lang) {
+    let voices = [];
+    try { voices = window.speechSynthesis.getVoices() || []; } catch (e) {}
+    if (!voices.length) return null;
+    const prefix = lang.split('-')[0].toLowerCase();
+    return (
+      voices.find((v) => v.lang && v.lang.toLowerCase().startsWith(prefix) && v.localService) ||
+      voices.find((v) => v.lang && v.lang.toLowerCase().startsWith(prefix)) ||
+      voices.find((v) => v.localService) ||
+      voices[0]
+    );
+  }
   function previewSpeak(text, lang) {
     if (!text) return;
     if (!('speechSynthesis' in window)) {
@@ -42,10 +56,24 @@
       return;
     }
     try {
+      const speakLang = lang === 'en' ? 'en-US' : 'ar-SA';
       const speakNow = () => {
+        let voices = [];
+        try { voices = window.speechSynthesis.getVoices() || []; } catch (e) {}
+        if (voices.length === 0) {
+          toast(uiLang === 'ar'
+            ? 'الجهاز/المتصفح ده مفيهوش أي أصوات نطق (Text-to-Speech) متاحة خالص - جرب متصفح أو جهاز تاني'
+            : 'This device/browser has no text-to-speech voices available at all - try a different browser or device', 'error');
+          return;
+        }
         const u = new SpeechSynthesisUtterance(text);
-        u.lang = lang === 'en' ? 'en-US' : 'ar-SA';
-        u.onerror = () => toast(uiLang === 'ar' ? 'تعذّر تشغيل الصوت - جرب متصفح تاني أو تأكد إن صوت العربي متثبت على جهازك' : 'Could not play the voice - try another browser or make sure an Arabic voice is installed on your device', 'error');
+        const voice = pickVoice(speakLang);
+        if (voice) { u.voice = voice; u.lang = voice.lang; }
+        else u.lang = speakLang;
+        u.onerror = (ev) => {
+          const code = (ev && ev.error) || '?';
+          toast((uiLang === 'ar' ? 'تعذّر تشغيل الصوت (كود الخطأ: ' : 'Could not play the voice (error code: ') + code + ')', 'error');
+        };
         window.speechSynthesis.speak(u);
       };
       if (window.speechSynthesis.speaking || window.speechSynthesis.pending) {

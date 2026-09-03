@@ -46,13 +46,32 @@
     try { window.speechSynthesis.getVoices(); } catch (e) {}
   }
 
+  // بنفضّل صوت "محلي" (مثبت على الجهاز) بنفس اللغة لو موجود، عشان نتجنب أصوات الشبكة اللي ممكن
+  // تتعطل لو الجهاز مقفول عليه الاتصال بسيرفرات جوجل الصوتية
+  function pickVoice(lang) {
+    let voices = [];
+    try { voices = window.speechSynthesis.getVoices() || []; } catch (e) {}
+    if (!voices.length) return null;
+    const prefix = lang.split('-')[0].toLowerCase();
+    return (
+      voices.find((v) => v.lang && v.lang.toLowerCase().startsWith(prefix) && v.localService) ||
+      voices.find((v) => v.lang && v.lang.toLowerCase().startsWith(prefix)) ||
+      voices.find((v) => v.localService) ||
+      voices[0]
+    );
+  }
+
   function speak(text, lang) {
     if (!text || !soundOn() || !('speechSynthesis' in window)) return;
     try {
+      const speakLang = lang === 'en' ? 'en-US' : 'ar-SA';
       const speakNow = () => {
         const u = new SpeechSynthesisUtterance(text);
-        u.lang = lang === 'en' ? 'en-US' : 'ar-SA';
+        const voice = pickVoice(speakLang);
+        if (voice) { u.voice = voice; u.lang = voice.lang; }
+        else u.lang = speakLang;
         u.rate = 1;
+        u.onerror = (ev) => { try { console.warn('[GameSound] speech error:', ev && ev.error); } catch (e2) {} };
         window.speechSynthesis.speak(u);
       };
       // نداء cancel() ومباشرة speak() في نفس اللحظة ممكن يخلي كروم يتجاهل الجملة الجديدة بصمت
