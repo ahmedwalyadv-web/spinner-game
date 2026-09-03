@@ -22,6 +22,10 @@
     const target = $('screen-' + name);
     if (target) target.hidden = false;
     renderLogos(name);
+    if (window.GameSound) {
+      if (name === 'intro') GameSound.startWelcomeLoop(playerLang);
+      else GameSound.stopWelcomeLoop();
+    }
   }
 
   /* ============ تحميل الإعدادات ============ */
@@ -33,6 +37,7 @@
       config = data.config;
       campaignId = data.id;
       playerLang = config.meta.defaultLanguage || 'ar';
+      if (window.GameSound) GameSound.init(config);
       applyTheme();
       setupLangToggle();
       setupIntro();
@@ -84,6 +89,7 @@
         setupIntro();
         setupForm();
         drawWheelCanvas();
+        if (window.GameSound && !$('screen-intro').hidden) GameSound.startWelcomeLoop(playerLang);
       };
     } else {
       playerLang = config.meta.language === 'en' ? 'en' : 'ar';
@@ -461,7 +467,11 @@
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'حدث خطأ');
       pendingResult = data;
-      spinToSegment(data.segmentIndex, () => showResult(data));
+      if (window.GameSound) GameSound.startSpinSound(Number(config.wheel.spinDurationMs) || 4500);
+      spinToSegment(data.segmentIndex, () => {
+        if (window.GameSound) GameSound.stopSpinSound();
+        showResult(data);
+      });
     } catch (e) {
       btn.disabled = false;
       alert(e.message);
@@ -508,6 +518,12 @@
     $('result-overlay').hidden = false;
 
     if (popupCfg.showConfetti) fireConfetti();
+
+    if (window.GameSound) {
+      const isWin = data.winner.type === 'win';
+      if (isWin) GameSound.playWinSound();
+      GameSound.speakResult(formData.name, t(data.winner.label), isWin, playerLang);
+    }
   }
 
   $('btn-result-close').addEventListener('click', () => {

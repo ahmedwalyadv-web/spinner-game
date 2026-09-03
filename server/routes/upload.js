@@ -20,7 +20,13 @@ const ALLOWED = new Set([
   'image/gif',
   'image/svg+xml',
   'video/mp4',
-  'video/webm'
+  'video/webm',
+  'audio/mpeg',
+  'audio/mp3',
+  'audio/ogg',
+  'audio/wav',
+  'audio/x-wav',
+  'audio/webm'
 ]);
 
 const storage = multer.diskStorage({

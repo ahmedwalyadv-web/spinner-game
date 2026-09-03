@@ -29,6 +29,16 @@
     return data.url;
   }
 
+  function previewSpeak(text, lang) {
+    if (!text) return;
+    try {
+      window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = lang === 'en' ? 'en-US' : 'ar-SA';
+      window.speechSynthesis.speak(u);
+    } catch (e) {}
+  }
+
   function toast(msg, type) {
     const t = document.getElementById('toast');
     t.textContent = msg;
@@ -98,7 +108,7 @@
       'editor.link': 'رابط اللعبة الخاص بالعميل:', 'editor.copy': 'نسخ', 'editor.active': 'مفعّل',
       'tab.theme': 'الهوية والألوان', 'tab.logos': 'الشعارات', 'tab.intro': 'شاشة المقدمة',
       'tab.form': 'بيانات العميل', 'tab.wheel': 'عجلة الحظ', 'tab.popups': 'نتيجة اللفة',
-      'tab.integrations': 'ربط جوجل شيت', 'tab.leads': 'بيانات العملاء'
+      'tab.sound': 'الصوت والتفاعل', 'tab.integrations': 'ربط جوجل شيت', 'tab.leads': 'بيانات العملاء'
     },
     en: {
       'login.title': 'Admin Dashboard Login', 'login.subtitle': 'Spinner Game - Campaign Management',
@@ -109,7 +119,7 @@
       'editor.link': "Client's game link:", 'editor.copy': 'Copy', 'editor.active': 'Active',
       'tab.theme': 'Branding & Colors', 'tab.logos': 'Logos', 'tab.intro': 'Intro Screen',
       'tab.form': 'Customer Info', 'tab.wheel': 'Lucky Wheel', 'tab.popups': 'Spin Result',
-      'tab.integrations': 'Google Sheet Sync', 'tab.leads': 'Customer Data'
+      'tab.sound': 'Sound & Voice', 'tab.integrations': 'Google Sheet Sync', 'tab.leads': 'Customer Data'
     }
   };
   let uiLang = localStorage.getItem('admin_ui_lang') || 'ar';
@@ -429,6 +439,34 @@
       if (isVideo) wrap.appendChild(el('video', { src: current, class: 'upload-preview', controls: 'controls' }));
       else wrap.appendChild(el('img', { src: current, class: 'upload-preview' }));
       wrap.appendChild(el('button', { class: 'icon-btn', style: 'margin-top:6px', onclick: () => { setPath(state.cfg, path, ''); if (TAB_RENDERERS[opts.rerenderTab]) TAB_RENDERERS[opts.rerenderTab](); } }, [uiLang === 'ar' ? 'إزالة' : 'Remove']));
+    }
+    return wrap;
+  }
+
+  function fieldAudioUpload(label, path, opts) {
+    opts = opts || {};
+    const current = getPath(state.cfg, path) || '';
+    const wrap = el('div', { class: 'field' });
+    wrap.appendChild(el('label', {}, [label]));
+    const box = el('div', { class: 'upload-box' }, [uiLang === 'ar' ? '📤 اضغط لرفع ملف صوت' : '📤 Click to upload an audio file']);
+    const fileInput = el('input', { type: 'file', accept: 'audio/*', style: 'display:none' });
+    box.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', async () => {
+      if (!fileInput.files[0]) return;
+      box.textContent = uiLang === 'ar' ? 'جاري الرفع...' : 'Uploading...';
+      try {
+        const url = await uploadFile(fileInput.files[0]);
+        setPath(state.cfg, path, url);
+        if (TAB_RENDERERS[opts.rerenderTab]) TAB_RENDERERS[opts.rerenderTab]();
+      } catch (e) {
+        toast(e.message, 'error');
+      }
+    });
+    wrap.appendChild(box);
+    wrap.appendChild(fileInput);
+    if (current) {
+      wrap.appendChild(el('audio', { src: current, controls: 'controls', style: 'display:block;margin-top:8px;width:100%;max-width:320px' }));
+      wrap.appendChild(el('button', { class: 'icon-btn', style: 'margin-top:6px', onclick: () => { setPath(state.cfg, path, ''); if (TAB_RENDERERS[opts.rerenderTab]) TAB_RENDERERS[opts.rerenderTab](); } }, [uiLang === 'ar' ? 'إزالة (رجوع للصوت الافتراضي)' : 'Remove (use default)']));
     }
     return wrap;
   }
@@ -889,6 +927,65 @@
       fieldBilingual(uiLang === 'ar' ? 'نص الزرار' : 'Button text', 'resultPopup.lose.buttonText'),
       fieldToggle(uiLang === 'ar' ? 'إظهار احتفال (كونفيتي)' : 'Show confetti celebration', 'resultPopup.lose.showConfetti'),
       fieldUpload(uiLang === 'ar' ? 'صورة داخل البوب أب (اختياري)' : 'Image inside popup (optional)', 'resultPopup.lose.imageUrl', { rerenderTab: 'popups' })
+    ]));
+  };
+
+  /* ============ تبويب: الصوت والتفاعل الصوتي ============ */
+  TAB_RENDERERS.sound = function () {
+    const c = document.getElementById('tab-sound');
+    c.innerHTML = '';
+
+    c.appendChild(el('div', { class: 'item-card' }, [
+      fieldToggle(uiLang === 'ar' ? 'تفعيل كل الأصوات والتفاعل الصوتي في الكامبين ده' : 'Enable all sound & voice for this campaign', 'sound.enabled')
+    ]));
+
+    c.appendChild(el('div', { class: 'section-title' }, [uiLang === 'ar' ? '📢 رسالة الترحيب (تجذب الناس تيجي تلعب)' : '📢 Welcome message (attracts people to play)']));
+    c.appendChild(el('p', { class: 'hint' }, [uiLang === 'ar'
+      ? 'هتتقال بصوت (Text-to-Speech) بشكل دوري على شاشة المقدمة قبل ما حد يبدأ يلعب، عشان تلفت انتباه أي حد ماشي يقف يلعب. ملحوظة: المتصفح محتاج لمسة واحدة على الشاشة الأول عشان يسمح بتشغيل الصوت (قيد أمان من المتصفح نفسه)، وبعدها هيشتغل عادي طول الوقت.'
+      : "Spoken (Text-to-Speech) periodically on the intro screen before anyone starts playing, to grab the attention of passersby. Note: the browser needs one tap on the screen first to allow audio (a browser security rule) — after that it keeps working normally."]));
+    c.appendChild(el('div', { class: 'item-card' }, [
+      fieldToggle(uiLang === 'ar' ? 'مفعّلة' : 'Enabled', 'sound.welcome.enabled'),
+      fieldBilingual(uiLang === 'ar' ? 'نص الرسالة' : 'Message text', 'sound.welcome.message'),
+      fieldNumber(uiLang === 'ar' ? 'تتكرر كل كام ثانية' : 'Repeat every (seconds)', 'sound.welcome.intervalSec', { min: 5, max: 300 }),
+      el('button', { class: 'btn btn-sm btn-ghost', style: 'margin-top:8px', onclick: () => previewSpeak(getPath(state.cfg, 'sound.welcome.message.' + uiLang), uiLang) }, [uiLang === 'ar' ? '🔊 جرب الصوت' : '🔊 Preview'])
+    ]));
+
+    c.appendChild(el('div', { class: 'section-title' }, [uiLang === 'ar' ? '🗣️ نداء العميل بالاسم وقت النتيجة' : '🗣️ Announcing the customer by name at result time']));
+    c.appendChild(el('p', { class: 'hint' }, [uiLang === 'ar'
+      ? 'استخدم {name} مكان اسم العميل و{prize} مكان اسم الجائزة داخل النص.'
+      : 'Use {name} for the customer name and {prize} for the prize name inside the text.']));
+    c.appendChild(el('div', { class: 'item-card' }, [
+      fieldToggle(uiLang === 'ar' ? 'مفعّلة' : 'Enabled', 'sound.resultAnnouncement.enabled'),
+      el('div', { class: 'muted-sm', style: 'margin:10px 0 4px' }, [uiLang === 'ar' ? 'عند الربح:' : 'On winning:']),
+      el('div', { class: 'field-row' }, [
+        fieldText(uiLang === 'ar' ? 'النص (عربي)' : 'Text (Arabic)', 'sound.resultAnnouncement.win.ar'),
+        fieldText(uiLang === 'ar' ? 'النص (English)' : 'Text (English)', 'sound.resultAnnouncement.win.en')
+      ]),
+      el('button', { class: 'btn btn-sm btn-ghost', onclick: () => previewSpeak((getPath(state.cfg, 'sound.resultAnnouncement.win.' + uiLang) || '').replace('{name}', uiLang === 'ar' ? 'أحمد' : 'Ahmed').replace('{prize}', uiLang === 'ar' ? 'خصم 10%' : '10% discount'), uiLang) }, [uiLang === 'ar' ? '🔊 جرب الصوت' : '🔊 Preview']),
+      el('div', { class: 'muted-sm', style: 'margin:14px 0 4px' }, [uiLang === 'ar' ? 'عند حظ أوفر:' : 'On lose:']),
+      el('div', { class: 'field-row' }, [
+        fieldText(uiLang === 'ar' ? 'النص (عربي)' : 'Text (Arabic)', 'sound.resultAnnouncement.lose.ar'),
+        fieldText(uiLang === 'ar' ? 'النص (English)' : 'Text (English)', 'sound.resultAnnouncement.lose.en')
+      ]),
+      el('button', { class: 'btn btn-sm btn-ghost', onclick: () => previewSpeak((getPath(state.cfg, 'sound.resultAnnouncement.lose.' + uiLang) || '').replace('{name}', uiLang === 'ar' ? 'أحمد' : 'Ahmed'), uiLang) }, [uiLang === 'ar' ? '🔊 جرب الصوت' : '🔊 Preview'])
+    ]));
+
+    c.appendChild(el('div', { class: 'section-title' }, [uiLang === 'ar' ? '🎵 صوت لفة العجلة' : '🎵 Wheel spin sound']));
+    c.appendChild(el('p', { class: 'hint' }, [uiLang === 'ar'
+      ? 'فيه صوت افتراضي جاهز (تكة عجلة الحظ) بيشتغل تلقائي أثناء اللفة من غير ما تعمل حاجة. تقدر ترفع صوت تاني بدلًا منه لو حابب.'
+      : "There's a default wheel-tick sound that plays automatically during the spin. You can upload a different sound instead if you like."]));
+    c.appendChild(el('div', { class: 'item-card' }, [
+      fieldToggle(uiLang === 'ar' ? 'مفعّل' : 'Enabled', 'sound.spinSound.enabled'),
+      fieldAudioUpload(uiLang === 'ar' ? 'صوت مخصص (اختياري)' : 'Custom sound (optional)', 'sound.spinSound.url', { rerenderTab: 'sound' })
+    ]));
+
+    c.appendChild(el('div', { class: 'section-title' }, [uiLang === 'ar' ? '🎉 صوت الاحتفال بالربح' : '🎉 Win celebration sound']));
+    c.appendChild(el('p', { class: 'hint' }, [uiLang === 'ar'
+      ? 'فيه صوت احتفال افتراضي بيشتغل تلقائي وقت ما العميل يكسب جائزة. تقدر ترفع صوت تاني بدلًا منه.'
+      : "There's a default celebration sound that plays automatically when the customer wins a prize. You can upload a different sound instead."]));
+    c.appendChild(el('div', { class: 'item-card' }, [
+      fieldToggle(uiLang === 'ar' ? 'مفعّل' : 'Enabled', 'sound.winSound.enabled'),
+      fieldAudioUpload(uiLang === 'ar' ? 'صوت مخصص (اختياري)' : 'Custom sound (optional)', 'sound.winSound.url', { rerenderTab: 'sound' })
     ]));
   };
 

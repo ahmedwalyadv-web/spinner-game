@@ -2,6 +2,7 @@ const express = require('express');
 const { v4: uuidv4 } = require('uuid');
 const db = require('../db');
 const { resolveSpin } = require('../utils/spin');
+const { mergeConfigDefaults } = require('../utils/defaultConfig');
 
 const router = express.Router();
 
@@ -43,7 +44,7 @@ router.get('/campaigns/:slug', (req, res) => {
   if (!c) return res.status(404).json({ error: 'الرابط غير صحيح' });
   if (!c.is_active) return res.status(403).json({ error: 'هذا الكامبين متوقف حاليًا' });
 
-  const config = JSON.parse(c.config);
+  const config = mergeConfigDefaults(JSON.parse(c.config));
   res.json({
     id: c.id,
     slug: c.slug,

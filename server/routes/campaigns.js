@@ -2,7 +2,7 @@ const express = require('express');
 const { v4: uuidv4 } = require('uuid');
 const db = require('../db');
 const { requireAuth } = require('../middleware/auth');
-const { defaultCampaignConfig } = require('../utils/defaultConfig');
+const { defaultCampaignConfig, mergeConfigDefaults } = require('../utils/defaultConfig');
 
 const router = express.Router();
 router.use(requireAuth);
@@ -65,7 +65,7 @@ router.get('/:id', (req, res) => {
     slug: c.slug,
     name: c.name,
     isActive: !!c.is_active,
-    config: JSON.parse(c.config),
+    config: mergeConfigDefaults(JSON.parse(c.config)),
     spinCount: c.spin_count,
     stockUsed: JSON.parse(c.stock_used || '{}'),
     createdAt: c.created_at,

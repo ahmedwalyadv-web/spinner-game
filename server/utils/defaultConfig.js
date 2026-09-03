@@ -55,6 +55,23 @@ function defaultCampaignConfig(name) {
       // رابط Google Apps Script Web App - لو موجود، كل عملية لعب بتتسجل فورًا في Google Sheet المربوط بيه
       googleSheetWebhookUrl: ''
     },
+    sound: {
+      enabled: true, // مفتاح رئيسي: لو متقفل هيقفل كل الأصوات والتفاعل الصوتي في الكامبين ده
+      welcome: {
+        // رسالة دورية تتقال بصوت (Text-to-Speech) على شاشة المقدمة عشان تجذب أي حد رايح يمشي يقف يلعب
+        enabled: true,
+        message: { ar: 'اتفضل تعالى دور عجلة الحظ واكسب هديتك دلوقتي!', en: 'Come spin the wheel and win your gift now!' },
+        intervalSec: 20
+      },
+      resultAnnouncement: {
+        // نداء العميل بالاسم بصوت (Text-to-Speech) وقت ظهور النتيجة - استخدم {name} و{prize} داخل النص
+        enabled: true,
+        win: { ar: 'مبروك يا {name}! كسبت {prize}', en: 'Congratulations {name}! You won {prize}' },
+        lose: { ar: 'حظ أوفر يا {name}، جرب تاني المرة الجاية', en: 'Better luck next time, {name}' }
+      },
+      spinSound: { enabled: true, url: '' }, // url فاضي = يستخدم صوت "تكة" افتراضي مولّد تلقائيًا
+      winSound: { enabled: true, url: '' } // url فاضي = يستخدم صوت احتفال افتراضي مولّد تلقائيًا
+    },
     wheel: {
       sizePct: 90,
       spinDurationMs: 4500,
@@ -108,4 +125,23 @@ function seg(id, ar, en, color, type, weight, guaranteedEvery, stock) {
   };
 }
 
-module.exports = { defaultCampaignConfig };
+// دمج آمن لمفاتيح جديدة (زي sound) في كامبينات قديمة اتحفظت قبل إضافتها، من غير ما نلمس أي حاجة العميل عدّلها بنفسه
+function deepMergeMissing(target, defaults) {
+  if (typeof defaults !== 'object' || defaults === null || Array.isArray(defaults)) {
+    return target === undefined ? defaults : target;
+  }
+  const result = target && typeof target === 'object' && !Array.isArray(target) ? { ...target } : {};
+  Object.keys(defaults).forEach((key) => {
+    result[key] = deepMergeMissing(target ? target[key] : undefined, defaults[key]);
+  });
+  return result;
+}
+
+function mergeConfigDefaults(config) {
+  const defaults = defaultCampaignConfig();
+  const merged = { ...config };
+  merged.sound = deepMergeMissing(config.sound, defaults.sound);
+  return merged;
+}
+
+module.exports = { defaultCampaignConfig, mergeConfigDefaults };
