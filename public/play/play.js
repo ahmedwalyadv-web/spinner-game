@@ -17,6 +17,30 @@
     return bilingual[playerLang] || bilingual.ar || bilingual.en || '';
   }
 
+  // تحقق من شكل رقم التليفون حسب إعدادات الكامبين (عدد أرقام إجباري و/أو بادئة إجبارية زي "05").
+  // بيرجع { ok:true, value } برقم "نظيف" (أرقام بس) لو الشكل صحيح، أو { ok:false, message } لو غلط.
+  function validatePhoneFormat(phone, validation) {
+    const digitsOnly = phone.replace(/\D/g, '');
+    const requiredDigits = Number(validation && validation.digits) || 0;
+    const prefix = (validation && validation.startsWith) || '';
+    if (!requiredDigits && !prefix) return { ok: true, value: phone };
+    if ((requiredDigits && digitsOnly.length !== requiredDigits) || (prefix && !digitsOnly.startsWith(prefix))) {
+      let msgAr, msgEn;
+      if (requiredDigits && prefix) {
+        msgAr = `رقم التليفون يجب أن يكون ${requiredDigits} أرقام ويبدأ بـ ${prefix}`;
+        msgEn = `Phone number must be ${requiredDigits} digits and start with ${prefix}`;
+      } else if (requiredDigits) {
+        msgAr = `رقم التليفون يجب أن يكون ${requiredDigits} أرقام`;
+        msgEn = `Phone number must be ${requiredDigits} digits`;
+      } else {
+        msgAr = `رقم التليفون يجب أن يبدأ بـ ${prefix}`;
+        msgEn = `Phone number must start with ${prefix}`;
+      }
+      return { ok: false, message: playerLang === 'ar' ? msgAr : msgEn };
+    }
+    return { ok: true, value: digitsOnly };
+  }
+
   function showScreen(name) {
     document.querySelectorAll('.screen').forEach((s) => (s.hidden = true));
     const target = $('screen-' + name);
@@ -270,7 +294,7 @@
     errBox.textContent = '';
 
     const name = $('input-name').value.trim();
-    const phone = $('input-phone').value.trim();
+    let phone = $('input-phone').value.trim();
     const position = $('input-position').value.trim();
     const email = $('input-email').value.trim();
 
@@ -281,6 +305,14 @@
     if (fields.phone.enabled && fields.phone.required && !phone) {
       errBox.textContent = playerLang === 'ar' ? 'من فضلك أدخل رقم التليفون' : 'Please enter your phone number';
       return;
+    }
+    if (fields.phone.enabled && phone) {
+      const phoneCheck = validatePhoneFormat(phone, fields.phone.validation);
+      if (!phoneCheck.ok) {
+        errBox.textContent = phoneCheck.message;
+        return;
+      }
+      phone = phoneCheck.value;
     }
     if (fields.email.enabled && fields.email.required && !email) {
       errBox.textContent = playerLang === 'ar' ? 'من فضلك أدخل البريد الإلكتروني' : 'Please enter your email';

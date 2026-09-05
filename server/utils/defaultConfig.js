@@ -32,7 +32,8 @@ function defaultCampaignConfig(name) {
       subtitle: { ar: 'من فضلك أدخل بياناتك عشان تقدر تلف العجلة', en: 'Please enter your details to spin the wheel' },
       fields: {
         name: { enabled: true, required: true, label: { ar: 'الاسم', en: 'Name' } },
-        phone: { enabled: true, required: true, label: { ar: 'رقم التليفون', en: 'Phone Number' } },
+        // validation.digits: عدد أرقام إجباري (0 = بدون قيد) - validation.startsWith: بادئة إجبارية (فاضي = بدون قيد)
+        phone: { enabled: true, required: true, label: { ar: 'رقم التليفون', en: 'Phone Number' }, validation: { digits: 10, startsWith: '05' } },
         position: { enabled: true, required: false, label: { ar: 'المنصب', en: 'Job Title' } },
         email: { enabled: true, required: false, label: { ar: 'البريد الإلكتروني', en: 'Email' } },
         interests: { enabled: true, required: false, label: { ar: 'الاهتمامات', en: 'Interests' }, multiSelect: true }
@@ -142,10 +143,9 @@ function deepMergeMissing(target, defaults) {
 }
 
 function mergeConfigDefaults(config) {
-  const defaults = defaultCampaignConfig();
-  const merged = { ...config };
-  merged.sound = deepMergeMissing(config.sound, defaults.sound);
-  return merged;
+  // بطبق الدمج على الكامبين كله (مش بس sound) عشان أي مفتاح جديد نضيفه في المستقبل في أي قسم
+  // يوصل تلقائيًا للكامبينات القديمة المحفوظة قبل إضافته، من غير ما نضطر نعدّل الدالة دي كل مرة
+  return deepMergeMissing(config, defaultCampaignConfig());
 }
 
 module.exports = { defaultCampaignConfig, mergeConfigDefaults };

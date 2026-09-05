@@ -11,6 +11,18 @@ function normalizePhone(phone) {
   return String(phone || '').replace(/\D/g, '');
 }
 
+// تحقق من شكل رقم التليفون حسب إعدادات الكامبين (عدد أرقام إجباري و/أو بادئة إجبارية) - بيرجع الرقم "نظيف" (أرقام بس)
+// لو الشكل صحيح، أو null لو غير صحيح. لو الكامبين مفيهوش أي قيد (digits=0 و startsWith فاضي) بيرجع الرقم الأصلي كما هو.
+function validatePhoneFormat(phone, validation) {
+  const digitsOnly = String(phone || '').replace(/\D/g, '');
+  const requiredDigits = Number(validation && validation.digits) || 0;
+  const prefix = (validation && validation.startsWith) || '';
+  if (!requiredDigits && !prefix) return phone;
+  if (requiredDigits && digitsOnly.length !== requiredDigits) return null;
+  if (prefix && !digitsOnly.startsWith(prefix)) return null;
+  return digitsOnly;
+}
+
 function findExistingLead(campaignId, phone) {
   const normalized = normalizePhone(phone);
   if (!normalized) return null;
@@ -69,13 +81,13 @@ router.post('/campaigns/:slug/spin', (req, res) => {
   if (!c) return res.status(404).json({ error: 'الرابط غير صحيح' });
   if (!c.is_active) return res.status(403).json({ error: 'هذا الكامبين متوقف حاليًا' });
 
-  const config = JSON.parse(c.config);
+  const config = mergeConfigDefaults(JSON.parse(c.config));
   const fields = config.form.fields;
   const body = req.body || {};
 
   // تحقق من الحقول المطلوبة حسب إعدادات الكامبين (الاسم والتليفون إجباريين دايمًا)
   const name = (body.name || '').toString().trim();
-  const phone = (body.phone || '').toString().trim();
+  let phone = (body.phone || '').toString().trim();
   const position = (body.position || '').toString().trim();
   const email = (body.email || '').toString().trim();
   const interests = Array.isArray(body.interests) ? body.interests : [];
@@ -87,6 +99,14 @@ router.post('/campaigns/:slug/spin', (req, res) => {
   }
   if (fields.phone.enabled && fields.phone.required && !phone) {
     return res.status(400).json({ error: 'من فضلك أدخل رقم التليفون' });
+  }
+  // حماية إضافية على السيرفر (شبكة أمان) - التحقق الأساسي والرسالة الواضحة للاعب بيحصلوا في الواجهة نفسها
+  if (fields.phone.enabled && phone) {
+    const cleaned = validatePhoneFormat(phone, fields.phone.validation);
+    if (cleaned === null) {
+      return res.status(400).json({ error: 'رقم التليفون غير صحيح' });
+    }
+    phone = cleaned;
   }
   if (fields.email.enabled && fields.email.required && !email) {
     return res.status(400).json({ error: 'من فضلك أدخل البريد الإلكتروني' });

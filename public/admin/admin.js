@@ -732,7 +732,15 @@
     ]);
     const phoneRow = el('div', { class: 'item-card' }, [
       el('div', { class: 'item-title' }, [uiLang === 'ar' ? 'رقم التليفون (إجباري دايمًا)' : 'Phone (always required)']),
-      fieldBilingual(uiLang === 'ar' ? 'مسمى الحقل' : 'Field label', 'form.fields.phone.label')
+      fieldBilingual(uiLang === 'ar' ? 'مسمى الحقل' : 'Field label', 'form.fields.phone.label'),
+      el('div', { class: 'muted-sm', style: 'margin:10px 0 4px' }, [uiLang === 'ar' ? 'التحقق من شكل الرقم (اختياري):' : 'Number format validation (optional):']),
+      el('p', { class: 'hint', style: 'margin:0 0 6px' }, [uiLang === 'ar'
+        ? 'يرفض أي رقم مش مطابق ويوضح للاعب السبب. سيب "عدد الأرقام" = 0 والبادئة فاضية لو مش عايز أي قيد.'
+        : 'Rejects any number that doesn\'t match and tells the player why. Leave "digit count" = 0 and the prefix empty for no restriction.']),
+      el('div', { class: 'field-row' }, [
+        fieldNumber(uiLang === 'ar' ? 'عدد الأرقام (0 = بدون قيد)' : 'Digit count (0 = no restriction)', 'form.fields.phone.validation.digits', { min: 0, max: 20 }),
+        fieldText(uiLang === 'ar' ? 'يجب أن يبدأ بـ (اختياري)' : 'Must start with (optional)', 'form.fields.phone.validation.startsWith')
+      ])
     ]);
     c.appendChild(nameRow);
     c.appendChild(phoneRow);
