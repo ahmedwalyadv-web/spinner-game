@@ -8,6 +8,7 @@
   let audioCtx = null;
   let welcomeTimer = null;
   let currentSpinAudioEl = null;
+  let activeSpeechAudio = null; // آخر عنصر Audio بيشغّل صوت جوجل الخارجي - محتاجينه عشان نوقفه لو غيّرنا الشاشة فجأة
 
   function ensureAudioCtx() {
     if (!audioCtx) {
@@ -62,23 +63,27 @@
   }
 
   // بنجرب الأول صوت جوجل الطبيعي (خارجي) لو السيرفر مفعّل عنده مفتاح الخدمة - جودة أعلى بكتير من صوت المتصفح.
-  // لو فشل لأي سبب (السيرفر مش مفعّل الخدمة، مفيش نت، أي خطأ) بنرجع فورًا لصوت المتصفح المجاني كخطة بديلة
-  function speakExternal(text, lang) {
+  // لو فشل لأي سبب (السيرفر مش مفعّل الخدمة، مفيش نت، أي خطأ) بنرجع فورًا لصوت المتصفح المجاني كخطة بديلة.
+  // البروميس بترجع (resolve) بعد ما الصوت يخلص فعليًا (حدث ended) مش بس أول ما يبدأ - عشان لو فيه كلام تاني
+  // لازم يتقال بعده (زي تعليمات الفوز) يستنى لحد ما الجملة اللي قبله تخلص فعلًا.
+  function speakExternal(text, lang, voice) {
     return new Promise((resolve, reject) => {
       try {
-        const url = '/api/tts?lang=' + encodeURIComponent(lang) + '&text=' + encodeURIComponent(text);
+        let url = '/api/tts?lang=' + encodeURIComponent(lang) + '&text=' + encodeURIComponent(text);
+        if (voice) url += '&voice=' + encodeURIComponent(voice);
         const audio = new Audio(url);
+        activeSpeechAudio = audio;
         let settled = false;
-        const finish = (ok) => {
-          if (settled) return;
-          settled = true;
-          ok ? resolve() : reject(new Error('external_tts_failed'));
-        };
+        const cleanup = () => { if (activeSpeechAudio === audio) activeSpeechAudio = null; };
+        const fail = () => { if (settled) return; settled = true; cleanup(); reject(new Error('external_tts_failed')); };
+        // مهلة قصيرة بس للتأكد إن الطلب نفسه اتحمّل ومشتغل (canplay) - مش هتلمس تشغيل الصوت وهو شغال فعلاً
+        const startupTimer = setTimeout(fail, 6000);
         audio.addEventListener('canplay', () => {
-          audio.play().then(() => finish(true)).catch(() => finish(false));
+          clearTimeout(startupTimer);
+          audio.play().catch(fail);
         });
-        audio.addEventListener('error', () => finish(false));
-        setTimeout(() => finish(false), 6000);
+        audio.addEventListener('ended', () => { if (!settled) { settled = true; cleanup(); resolve(); } });
+        audio.addEventListener('error', () => { clearTimeout(startupTimer); fail(); });
       } catch (e) {
         reject(e);
       }
@@ -86,32 +91,45 @@
   }
 
   function speakBrowser(text, lang) {
-    if (!('speechSynthesis' in window)) return;
-    try {
-      const speakLang = lang === 'en' ? 'en-US' : 'ar-SA';
-      const speakNow = () => {
-        const u = new SpeechSynthesisUtterance(text);
-        const voice = pickVoice(speakLang);
-        if (voice) { u.voice = voice; u.lang = voice.lang; }
-        else u.lang = speakLang;
-        u.rate = 1;
-        u.onerror = (ev) => { try { console.warn('[GameSound] speech error:', ev && ev.error); } catch (e2) {} };
-        window.speechSynthesis.speak(u);
-      };
-      // نداء cancel() ومباشرة speak() في نفس اللحظة ممكن يخلي كروم يتجاهل الجملة الجديدة بصمت
-      if (window.speechSynthesis.speaking || window.speechSynthesis.pending) {
-        window.speechSynthesis.cancel();
-        setTimeout(speakNow, 80);
-      } else {
-        speakNow();
-      }
-    } catch (e) {}
+    return new Promise((resolve) => {
+      if (!('speechSynthesis' in window)) return resolve();
+      try {
+        const speakLang = lang === 'en' ? 'en-US' : 'ar-SA';
+        const speakNow = () => {
+          const u = new SpeechSynthesisUtterance(text);
+          const voice = pickVoice(speakLang);
+          if (voice) { u.voice = voice; u.lang = voice.lang; }
+          else u.lang = speakLang;
+          u.rate = 1;
+          let done = false;
+          const finish = () => { if (done) return; done = true; resolve(); };
+          u.onend = finish;
+          u.onerror = (ev) => { try { console.warn('[GameSound] speech error:', ev && ev.error); } catch (e2) {} finish(); };
+          // شبكة أمان لو حدث onend/onerror ماجاش لأي سبب (بعض متصفحات الموبايل بتتصرف بغرابة أحيانًا)
+          setTimeout(finish, 20000);
+          window.speechSynthesis.speak(u);
+        };
+        // نداء cancel() ومباشرة speak() في نفس اللحظة ممكن يخلي كروم يتجاهل الجملة الجديدة بصمت
+        if (window.speechSynthesis.speaking || window.speechSynthesis.pending) {
+          window.speechSynthesis.cancel();
+          setTimeout(speakNow, 80);
+        } else {
+          speakNow();
+        }
+      } catch (e) { resolve(); }
+    });
+  }
+
+  // بترجع بروميس بيتحل بعد ما الجملة تتقال فعليًا وتخلص (مفيد لما نحتاج نقول جملة بعدها بالظبط، زي تعليمات الفوز)
+  function speakAndWait(text, lang) {
+    if (!text || !soundOn()) return Promise.resolve();
+    const shortLang = lang === 'en' ? 'en' : 'ar';
+    const voice = cfg && cfg.sound && cfg.sound.voice && cfg.sound.voice[shortLang];
+    return speakExternal(text, shortLang, voice).catch(() => speakBrowser(text, lang));
   }
 
   function speak(text, lang) {
-    if (!text || !soundOn()) return;
-    const shortLang = lang === 'en' ? 'en' : 'ar';
-    speakExternal(text, shortLang).catch(() => speakBrowser(text, lang));
+    speakAndWait(text, lang);
   }
 
   /* ============ رسالة الترحيب الدورية (شاشة المقدمة) ============ */
@@ -129,9 +147,10 @@
   function stopWelcomeLoop() {
     if (welcomeTimer) { clearInterval(welcomeTimer); welcomeTimer = null; }
     try { window.speechSynthesis.cancel(); } catch (e) {}
+    if (activeSpeechAudio) { try { activeSpeechAudio.pause(); } catch (e) {} activeSpeechAudio = null; }
   }
 
-  /* ============ نداء العميل بالاسم وقت ظهور النتيجة ============ */
+  /* ============ نداء العميل بالاسم وقت ظهور النتيجة (+ تعليمات إضافية اختيارية بعد الفوز) ============ */
   function speakResult(name, prizeText, isWin, lang) {
     const r = cfg && cfg.sound && cfg.sound.resultAnnouncement;
     if (!soundOn() || !r || r.enabled === false) return;
@@ -139,7 +158,16 @@
     let text = (tmplObj && (tmplObj[lang] || tmplObj.ar)) || '';
     if (!text) return;
     text = text.replace(/\{name\}/g, name || '').replace(/\{prize\}/g, prizeText || '');
-    setTimeout(() => speak(text, lang), 350); // تأخير بسيط عشان ميتزاحمش مع صوت وقفة اللفة
+    setTimeout(async () => {
+      // تأخير بسيط عشان ميتزاحمش مع صوت وقفة اللفة
+      await speakAndWait(text, lang);
+      if (!isWin) return;
+      const instrObj = r.winInstructions;
+      const instructions = (instrObj && (instrObj[lang] || instrObj.ar)) || '';
+      if (!instructions) return;
+      await new Promise((r2) => setTimeout(r2, 400)); // فاصل قصير بين نداء المكسب والتعليمات
+      speakAndWait(instructions, lang);
+    }, 350);
   }
 
   /* ============ صوت لفة العجلة - افتراضي: تكات متسارعة بتبطئ تدريجيًا (زي عجلة حظ حقيقية) ============ */

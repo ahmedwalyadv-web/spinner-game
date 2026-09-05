@@ -57,6 +57,8 @@ function defaultCampaignConfig(name) {
     },
     sound: {
       enabled: true, // مفتاح رئيسي: لو متقفل هيقفل كل الأصوات والتفاعل الصوتي في الكامبين ده
+      // اسم صوت Google Cloud TTS (Chirp3 HD) المستخدم وقت ما يكون فيه اتصال خارجي متاح - لو مش متاح بيرجع تلقائيًا لصوت المتصفح
+      voice: { ar: 'ar-XA-Chirp3-HD-Puck', en: 'en-US-Chirp3-HD-Puck' },
       welcome: {
         // رسالة دورية تتقال بصوت (Text-to-Speech) على شاشة المقدمة عشان تجذب أي حد رايح يمشي يقف يلعب
         enabled: true,
@@ -67,7 +69,9 @@ function defaultCampaignConfig(name) {
         // نداء العميل بالاسم بصوت (Text-to-Speech) وقت ظهور النتيجة - استخدم {name} و{prize} داخل النص
         enabled: true,
         win: { ar: 'مبروك يا {name}! كسبت {prize}', en: 'Congratulations {name}! You won {prize}' },
-        lose: { ar: 'حظ أوفر يا {name}، جرب تاني المرة الجاية', en: 'Better luck next time, {name}' }
+        lose: { ar: 'حظ أوفر يا {name}، جرب تاني المرة الجاية', en: 'Better luck next time, {name}' },
+        // تعليمات إضافية اختيارية بتتقال بعد نداء الفوز مباشرة، توضح للفائز يعمل ايه بعد كدة (مثلاً يروح فين يستلم الجايزة)
+        winInstructions: { ar: '', en: '' }
       },
       spinSound: { enabled: true, url: '' }, // url فاضي = يستخدم صوت "تكة" افتراضي مولّد تلقائيًا
       winSound: { enabled: true, url: '' } // url فاضي = يستخدم صوت احتفال افتراضي مولّد تلقائيًا

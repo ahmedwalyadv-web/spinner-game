@@ -51,11 +51,12 @@
   }
   // بنجرب الأول صوت جوجل الطبيعي الخارجي (لو السيرفر مفعّل عنده الخدمة) - جودة أعلى من صوت المتصفح.
   // لو مش متاح (السيرفر مفيهوش مفتاح الخدمة، أو حصل أي خطأ) بنرجع تلقائيًا لصوت المتصفح مع كل الرسائل التشخيصية القديمة
-  function previewSpeakExternal(text, lang) {
+  function previewSpeakExternal(text, lang, voice) {
     return new Promise((resolve, reject) => {
       try {
         const shortLang = lang === 'en' ? 'en' : 'ar';
-        const url = '/api/tts?lang=' + encodeURIComponent(shortLang) + '&text=' + encodeURIComponent(text);
+        let url = '/api/tts?lang=' + encodeURIComponent(shortLang) + '&text=' + encodeURIComponent(text);
+        if (voice) url += '&voice=' + encodeURIComponent(voice);
         const audio = new Audio(url);
         let settled = false;
         const finish = (ok) => {
@@ -113,7 +114,9 @@
 
   function previewSpeak(text, lang) {
     if (!text) return;
-    previewSpeakExternal(text, lang)
+    const shortLang = lang === 'en' ? 'en' : 'ar';
+    const voice = getPath(state.cfg, 'sound.voice.' + shortLang);
+    previewSpeakExternal(text, lang, voice)
       .then(() => toast(uiLang === 'ar' ? '🔊 اتشغل بصوت جوجل الطبيعي' : '🔊 Played with Google natural voice', 'success'))
       .catch(() => previewSpeakBrowser(text, lang));
   }
@@ -131,6 +134,8 @@
     const node = document.createElement(tag);
     attrs = attrs || {};
     Object.keys(attrs).forEach((k) => {
+      if (attrs[k] === undefined) return; // مهم: setAttribute(k, undefined) بيحوّلها لسلسلة نصية "undefined" فعليًا،
+      // يعني مثلاً "selected: undefined" أو "checked: undefined" كانت بتحط الخاصية موجودة برضه غلط - من غير الفحص ده
       if (k === 'class') node.className = attrs[k];
       else if (k === 'html') node.innerHTML = attrs[k];
       else if (k.startsWith('on') && typeof attrs[k] === 'function') node.addEventListener(k.slice(2), attrs[k]);
@@ -1018,6 +1023,32 @@
       fieldToggle(uiLang === 'ar' ? 'تفعيل كل الأصوات والتفاعل الصوتي في الكامبين ده' : 'Enable all sound & voice for this campaign', 'sound.enabled')
     ]));
 
+    c.appendChild(el('div', { class: 'section-title' }, [uiLang === 'ar' ? '🎙️ اختيار الصوت' : '🎙️ Voice selection']));
+    c.appendChild(el('p', { class: 'hint' }, [uiLang === 'ar'
+      ? 'الصوت ده بيتستخدم في رسالة الترحيب ونداء النتيجة سوا. جرب أكتر من صوت واختار اللي عاجبك أكتر.'
+      : 'This voice is used for both the welcome message and the result announcement. Try a few and pick the one you like best.']));
+    c.appendChild(el('div', { class: 'item-card' }, [
+      fieldSelect(uiLang === 'ar' ? 'الصوت العربي' : 'Arabic voice', 'sound.voice.ar', [
+        { value: 'ar-XA-Chirp3-HD-Puck', label: uiLang === 'ar' ? 'Puck - رجالي، واضح وطبيعي (مقترح)' : 'Puck - male, clear & natural (suggested)' },
+        { value: 'ar-XA-Chirp3-HD-Charon', label: uiLang === 'ar' ? 'Charon - رجالي، نبرة هادئة' : 'Charon - male, calm tone' },
+        { value: 'ar-XA-Chirp3-HD-Fenrir', label: uiLang === 'ar' ? 'Fenrir - رجالي، حماسي' : 'Fenrir - male, energetic' },
+        { value: 'ar-XA-Chirp3-HD-Orus', label: uiLang === 'ar' ? 'Orus - رجالي' : 'Orus - male' },
+        { value: 'ar-XA-Chirp3-HD-Kore', label: uiLang === 'ar' ? 'Kore - نسائي، واضح' : 'Kore - female, clear' },
+        { value: 'ar-XA-Chirp3-HD-Aoede', label: uiLang === 'ar' ? 'Aoede - نسائي، ودود' : 'Aoede - female, friendly' },
+        { value: 'ar-XA-Chirp3-HD-Zephyr', label: uiLang === 'ar' ? 'Zephyr - نسائي، هادئ' : 'Zephyr - female, calm' },
+        { value: 'ar-XA-Wavenet-B', label: uiLang === 'ar' ? 'صوت WaveNet القديم (رجالي)' : 'Old WaveNet voice (male)' },
+        { value: 'ar-XA-Wavenet-D', label: uiLang === 'ar' ? 'صوت WaveNet القديم (نسائي)' : 'Old WaveNet voice (female)' }
+      ]),
+      el('button', { class: 'btn btn-sm btn-ghost', style: 'margin-top:4px', onclick: () => previewSpeak(uiLang === 'ar' ? 'مرحبًا بيك، تعالى دور عجلة الحظ' : 'Welcome, come spin the wheel', 'ar') }, [uiLang === 'ar' ? '🔊 جرب الصوت العربي' : '🔊 Preview Arabic voice']),
+      fieldSelect(uiLang === 'ar' ? 'الصوت الإنجليزي' : 'English voice', 'sound.voice.en', [
+        { value: 'en-US-Chirp3-HD-Puck', label: uiLang === 'ar' ? 'Puck - رجالي (مقترح)' : 'Puck - male (suggested)' },
+        { value: 'en-US-Chirp3-HD-Kore', label: uiLang === 'ar' ? 'Kore - نسائي' : 'Kore - female' },
+        { value: 'en-US-Chirp3-HD-Charon', label: uiLang === 'ar' ? 'Charon - رجالي هادئ' : 'Charon - calm male' },
+        { value: 'en-US-Wavenet-D', label: uiLang === 'ar' ? 'صوت WaveNet القديم' : 'Old WaveNet voice' }
+      ]),
+      el('button', { class: 'btn btn-sm btn-ghost', style: 'margin-top:4px', onclick: () => previewSpeak('Welcome, come spin the wheel', 'en') }, [uiLang === 'ar' ? '🔊 جرب الصوت الإنجليزي' : '🔊 Preview English voice'])
+    ]));
+
     c.appendChild(el('div', { class: 'section-title' }, [uiLang === 'ar' ? '📢 رسالة الترحيب (تجذب الناس تيجي تلعب)' : '📢 Welcome message (attracts people to play)']));
     c.appendChild(el('p', { class: 'hint' }, [uiLang === 'ar'
       ? 'هتتقال بصوت (Text-to-Speech) بشكل دوري على شاشة المقدمة قبل ما حد يبدأ يلعب، عشان تلفت انتباه أي حد ماشي يقف يلعب. ملحوظة: المتصفح محتاج لمسة واحدة على الشاشة الأول عشان يسمح بتشغيل الصوت (قيد أمان من المتصفح نفسه)، وبعدها هيشتغل عادي طول الوقت.'
@@ -1041,6 +1072,15 @@
         fieldText(uiLang === 'ar' ? 'النص (English)' : 'Text (English)', 'sound.resultAnnouncement.win.en')
       ]),
       el('button', { class: 'btn btn-sm btn-ghost', onclick: () => previewSpeak((getPath(state.cfg, 'sound.resultAnnouncement.win.' + uiLang) || '').replace('{name}', uiLang === 'ar' ? 'أحمد' : 'Ahmed').replace('{prize}', uiLang === 'ar' ? 'خصم 10%' : '10% discount'), uiLang) }, [uiLang === 'ar' ? '🔊 جرب الصوت' : '🔊 Preview']),
+      el('div', { class: 'muted-sm', style: 'margin:14px 0 4px' }, [uiLang === 'ar' ? 'تعليمات إضافية بعد الفوز (اختياري):' : 'Additional instructions after winning (optional):']),
+      el('p', { class: 'hint', style: 'margin:0 0 6px' }, [uiLang === 'ar'
+        ? 'بتتقال بالصوت مباشرة بعد نداء "مبروك يا..." - استخدمها عشان توضح للفائز يعمل ايه بعد كدة، مثلاً يروح فين يستلم جايزته.'
+        : 'Spoken right after the "Congratulations..." announcement - use it to tell the winner what to do next, e.g. where to collect their prize.']),
+      el('div', { class: 'field-row' }, [
+        fieldText(uiLang === 'ar' ? 'النص (عربي)' : 'Text (Arabic)', 'sound.resultAnnouncement.winInstructions.ar'),
+        fieldText(uiLang === 'ar' ? 'النص (English)' : 'Text (English)', 'sound.resultAnnouncement.winInstructions.en')
+      ]),
+      el('button', { class: 'btn btn-sm btn-ghost', onclick: () => previewSpeak(getPath(state.cfg, 'sound.resultAnnouncement.winInstructions.' + uiLang) || '', uiLang) }, [uiLang === 'ar' ? '🔊 جرب الصوت' : '🔊 Preview']),
       el('div', { class: 'muted-sm', style: 'margin:14px 0 4px' }, [uiLang === 'ar' ? 'عند حظ أوفر:' : 'On lose:']),
       el('div', { class: 'field-row' }, [
         fieldText(uiLang === 'ar' ? 'النص (عربي)' : 'Text (Arabic)', 'sound.resultAnnouncement.lose.ar'),

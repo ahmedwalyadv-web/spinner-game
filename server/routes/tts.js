@@ -15,16 +15,30 @@ const CACHE_DIR = process.env.DATA_DIR
   : path.join(__dirname, '..', '..', 'public', 'tts-cache');
 if (!fs.existsSync(CACHE_DIR)) fs.mkdirSync(CACHE_DIR, { recursive: true });
 
-// أصوات WaveNet طبيعية الجودة - ثابتة حاليًا، ممكن تتحول لإعداد قابل للتغيير من الأدمن لاحقًا لو احتجنا
-const VOICE_MAP = {
-  ar: { languageCode: 'ar-XA', name: 'ar-XA-Wavenet-B' },
-  en: { languageCode: 'en-US', name: 'en-US-Wavenet-D' }
+// الصوت الافتراضي لو الأدمن ماختارش صوت معين من قايمة تبويب "الصوت والتفاعل"
+const DEFAULT_VOICE = {
+  ar: 'ar-XA-Chirp3-HD-Puck',
+  en: 'en-US-Chirp3-HD-Puck'
 };
+
+// أي اسم صوت جاي من الأدمن (querystring) لازم يتطابق مع الشكل ده بالظبط عشان نقبله - حماية من إساءة الاستخدام
+// وفي نفس الوقت بيسمح بكل أصوات Chirp3 HD (أعلى جودة) وWaveNet وStandard المتاحة لـ ar-XA وen-US من غير
+// ما نحتاج نسرد كل الأسماء الـ30 يدويًا واحد واحد
+const VOICE_NAME_PATTERN = /^(ar-XA|en-US)-(Chirp3-HD-[A-Za-z]{3,20}|Wavenet-[A-D]|Standard-[A-D])$/;
 
 const MAX_TEXT_LENGTH = 400; // حماية بسيطة من إساءة الاستخدام وتكلفة زيادة
 
-function cacheKeyFor(text, lang) {
-  return crypto.createHash('sha1').update(lang + '::' + text).digest('hex');
+function resolveVoiceName(requested, lang) {
+  if (requested && VOICE_NAME_PATTERN.test(requested)) return requested;
+  return DEFAULT_VOICE[lang];
+}
+
+function languageCodeFromVoiceName(voiceName) {
+  return voiceName.startsWith('ar-XA') ? 'ar-XA' : 'en-US';
+}
+
+function cacheKeyFor(text, voiceName) {
+  return crypto.createHash('sha1').update(voiceName + '::' + text).digest('hex');
 }
 
 router.get('/', async (req, res) => {
@@ -38,8 +52,9 @@ router.get('/', async (req, res) => {
     const lang = req.query.lang === 'en' ? 'en' : 'ar';
     if (!rawText) return res.status(400).json({ error: 'text_required' });
     const text = rawText.slice(0, MAX_TEXT_LENGTH);
+    const voiceName = resolveVoiceName((req.query.voice || '').toString(), lang);
 
-    const key = cacheKeyFor(text, lang);
+    const key = cacheKeyFor(text, voiceName);
     const filePath = path.join(CACHE_DIR, key + '.mp3');
 
     if (fs.existsSync(filePath)) {
@@ -48,7 +63,6 @@ router.get('/', async (req, res) => {
       return fs.createReadStream(filePath).pipe(res);
     }
 
-    const voice = VOICE_MAP[lang];
     const googleRes = await fetch(
       `https://texttospeech.googleapis.com/v1/text:synthesize?key=${encodeURIComponent(apiKey)}`,
       {
@@ -56,7 +70,7 @@ router.get('/', async (req, res) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           input: { text },
-          voice: { languageCode: voice.languageCode, name: voice.name },
+          voice: { languageCode: languageCodeFromVoiceName(voiceName), name: voiceName },
           audioConfig: { audioEncoding: 'MP3' }
         })
       }
