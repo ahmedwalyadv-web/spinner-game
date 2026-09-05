@@ -49,8 +49,32 @@
       voices[0]
     );
   }
-  function previewSpeak(text, lang) {
-    if (!text) return;
+  // بنجرب الأول صوت جوجل الطبيعي الخارجي (لو السيرفر مفعّل عنده الخدمة) - جودة أعلى من صوت المتصفح.
+  // لو مش متاح (السيرفر مفيهوش مفتاح الخدمة، أو حصل أي خطأ) بنرجع تلقائيًا لصوت المتصفح مع كل الرسائل التشخيصية القديمة
+  function previewSpeakExternal(text, lang) {
+    return new Promise((resolve, reject) => {
+      try {
+        const shortLang = lang === 'en' ? 'en' : 'ar';
+        const url = '/api/tts?lang=' + encodeURIComponent(shortLang) + '&text=' + encodeURIComponent(text);
+        const audio = new Audio(url);
+        let settled = false;
+        const finish = (ok) => {
+          if (settled) return;
+          settled = true;
+          ok ? resolve() : reject(new Error('external_tts_failed'));
+        };
+        audio.addEventListener('canplay', () => {
+          audio.play().then(() => finish(true)).catch(() => finish(false));
+        });
+        audio.addEventListener('error', () => finish(false));
+        setTimeout(() => finish(false), 6000);
+      } catch (e) {
+        reject(e);
+      }
+    });
+  }
+
+  function previewSpeakBrowser(text, lang) {
     if (!('speechSynthesis' in window)) {
       toast(uiLang === 'ar' ? 'المتصفح ده مش بيدعم النطق الصوتي (Text-to-Speech)' : 'This browser does not support text-to-speech', 'error');
       return;
@@ -85,6 +109,13 @@
     } catch (e) {
       toast(e.message, 'error');
     }
+  }
+
+  function previewSpeak(text, lang) {
+    if (!text) return;
+    previewSpeakExternal(text, lang)
+      .then(() => toast(uiLang === 'ar' ? '🔊 اتشغل بصوت جوجل الطبيعي' : '🔊 Played with Google natural voice', 'success'))
+      .catch(() => previewSpeakBrowser(text, lang));
   }
 
   function toast(msg, type) {

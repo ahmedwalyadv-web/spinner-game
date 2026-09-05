@@ -10,6 +10,7 @@ const campaignsRoutes = require('./routes/campaigns');
 const leadsRoutes = require('./routes/leads');
 const uploadRoutes = require('./routes/upload');
 const publicRoutes = require('./routes/public');
+const ttsRoutes = require('./routes/tts');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -33,6 +34,7 @@ app.use('/api/campaigns', campaignsRoutes);
 app.use('/api/campaigns/:campaignId/leads', leadsRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/public', publicRoutes);
+app.use('/api/tts', ttsRoutes);
 
 app.get('/health', (req, res) => res.json({ ok: true }));
 

@@ -61,8 +61,32 @@
     );
   }
 
-  function speak(text, lang) {
-    if (!text || !soundOn() || !('speechSynthesis' in window)) return;
+  // بنجرب الأول صوت جوجل الطبيعي (خارجي) لو السيرفر مفعّل عنده مفتاح الخدمة - جودة أعلى بكتير من صوت المتصفح.
+  // لو فشل لأي سبب (السيرفر مش مفعّل الخدمة، مفيش نت، أي خطأ) بنرجع فورًا لصوت المتصفح المجاني كخطة بديلة
+  function speakExternal(text, lang) {
+    return new Promise((resolve, reject) => {
+      try {
+        const url = '/api/tts?lang=' + encodeURIComponent(lang) + '&text=' + encodeURIComponent(text);
+        const audio = new Audio(url);
+        let settled = false;
+        const finish = (ok) => {
+          if (settled) return;
+          settled = true;
+          ok ? resolve() : reject(new Error('external_tts_failed'));
+        };
+        audio.addEventListener('canplay', () => {
+          audio.play().then(() => finish(true)).catch(() => finish(false));
+        });
+        audio.addEventListener('error', () => finish(false));
+        setTimeout(() => finish(false), 6000);
+      } catch (e) {
+        reject(e);
+      }
+    });
+  }
+
+  function speakBrowser(text, lang) {
+    if (!('speechSynthesis' in window)) return;
     try {
       const speakLang = lang === 'en' ? 'en-US' : 'ar-SA';
       const speakNow = () => {
@@ -82,6 +106,12 @@
         speakNow();
       }
     } catch (e) {}
+  }
+
+  function speak(text, lang) {
+    if (!text || !soundOn()) return;
+    const shortLang = lang === 'en' ? 'en' : 'ar';
+    speakExternal(text, shortLang).catch(() => speakBrowser(text, lang));
   }
 
   /* ============ رسالة الترحيب الدورية (شاشة المقدمة) ============ */

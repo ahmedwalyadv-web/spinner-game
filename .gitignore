@@ -5,5 +5,7 @@ data/*.db-wal
 data/*.db-shm
 public/uploads/*
 !public/uploads/.gitkeep
+public/tts-cache/*
+!public/tts-cache/.gitkeep
 .env
 npm-debug.log
