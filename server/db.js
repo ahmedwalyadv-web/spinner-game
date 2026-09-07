@@ -89,4 +89,22 @@ if (adminCount === 0) {
   console.log('──────────────────────────────────────────────');
 }
 
+// إعادة تعيين كلمة مرور أدمن معيّن (لو نسيها) - بتشتغل بس لو متغير بيئة RESET_ADMIN_PASSWORD
+// معرّف وغير فاضي، فمينفعش تحصل بالغلط في أي تشغيل عادي. لازم يشال المتغير ده بعد الاستخدام
+// مباشرة، وإلا هيرجع يعيد كلمة السر لنفس القيمة دي في أي إعادة تشغيل/نشر جاي.
+if (process.env.RESET_ADMIN_PASSWORD) {
+  const resetUser = process.env.ADMIN_USERNAME || 'admin';
+  const newHash = bcrypt.hashSync(process.env.RESET_ADMIN_PASSWORD, 10);
+  const existingAdmin = db.prepare('SELECT id FROM admins WHERE username = ?').get(resetUser);
+  if (existingAdmin) {
+    db.prepare('UPDATE admins SET password_hash = ? WHERE id = ?').run(newHash, existingAdmin.id);
+    console.log(`تم إعادة تعيين كلمة مرور المستخدم "${resetUser}" بنجاح - برجاء تغييرها من لوحة التحكم بعد الدخول وحذف متغير RESET_ADMIN_PASSWORD.`);
+  } else {
+    db.prepare(
+      'INSERT INTO admins (id, username, password_hash, display_name, created_at) VALUES (?, ?, ?, ?, ?)'
+    ).run(uuidv4(), resetUser, newHash, 'Admin', new Date().toISOString());
+    console.log(`تم إنشاء مستخدم أدمن جديد "${resetUser}" بكلمة المرور المحددة في RESET_ADMIN_PASSWORD.`);
+  }
+}
+
 module.exports = db;
