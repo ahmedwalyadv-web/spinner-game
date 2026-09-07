@@ -413,11 +413,30 @@
 
       if (seg.image && seg.image.url && segImageCache[seg.id]) {
         const dist = ((seg.image.distancePct ?? 40) / 100) * radius;
-        const w = ((seg.image.widthPct ?? 22) / 100) * radius * 2;
+        let halfW = (((seg.image.widthPct ?? 22) / 100) * radius * 2) / 2;
+        // نحسب أقصى نصف-حجم آمن عند المسافة دي عشان الصورة (مربّعة الشكل) ما تتقصش
+        // بشكل غير متماثل من حواف القسم المائلة (خصوصًا القريبة من المركز، لأن القسم
+        // بيتضيّق كل ما اتقربنا من المنتصف) - ده اللي كان بيخلي الصورة تبان "مش في المنتصف"
+        // حتى بعد ما اتحصرت جوه حدود القسم. الحساب ده بيشتغل صح مهما كان عدد الأقسام.
+        const tanHalfAngle = Math.tan(anglePer / 2);
+        const maxHalfByAngle = (dist * tanHalfAngle) / (1 + tanHalfAngle);
+        const maxHalfByOuterEdge = radius - dist;
+        halfW = Math.max(4, Math.min(halfW, maxHalfByAngle, maxHalfByOuterEdge));
+        const w = halfW * 2;
+
+        const img = segImageCache[seg.id];
+        const naturalW = img.naturalWidth || img.width || 1;
+        const naturalH = img.naturalHeight || img.height || 1;
+        const ratio = naturalW / naturalH;
+        // نحافظ على نسبة أبعاد الصورة الأصلية (بدون تمديد) - تتوسط جوه المساحة المتاحة
+        let dw = w, dh = w;
+        if (ratio > 1) dh = w / ratio;
+        else if (ratio < 1) dw = w * ratio;
+
         ctx.save();
         ctx.translate(dist, 0);
         ctx.rotate(Math.PI / 2);
-        try { ctx.drawImage(segImageCache[seg.id], -w / 2, -w / 2, w, w); } catch (e) {}
+        try { ctx.drawImage(img, -dw / 2, -dh / 2, dw, dh); } catch (e) {}
         ctx.restore();
       }
 
