@@ -1,7 +1,9 @@
+
+Play · JS
 /* صفحة اللعبة (السبنر) - تُقرأ إعداداتها بالكامل من السيرفر حسب رابط الكامبين */
 (function () {
   'use strict';
-
+ 
   const slug = location.pathname.replace(/^\/play\/?/, '').split('/')[0];
   let config = null;
   let campaignId = null;
@@ -9,19 +11,19 @@
   let formData = {};
   let pendingResult = null;
   let wheelRotation = 0;
-
+ 
   const $ = (id) => document.getElementById(id);
-
+ 
   function t(bilingual) {
     if (!bilingual) return '';
     return bilingual[playerLang] || bilingual.ar || bilingual.en || '';
   }
-
+ 
   // وضع "يلف الأول وبعدين يسجل بياناته لاستلام الجائزة" - لو مش مفعّل، السلوك زي ما كان (بيانات الأول)
   function isSpinFirst() {
     return !!(config && config.flow && config.flow.order === 'spinFirst');
   }
-
+ 
   // تحقق من شكل رقم التليفون حسب إعدادات الكامبين (عدد أرقام إجباري و/أو بادئة إجبارية زي "05").
   // بيرجع { ok:true, value } برقم "نظيف" (أرقام بس) لو الشكل صحيح، أو { ok:false, message } لو غلط.
   function validatePhoneFormat(phone, validation) {
@@ -45,7 +47,7 @@
     }
     return { ok: true, value: digitsOnly };
   }
-
+ 
   function showScreen(name) {
     document.querySelectorAll('.screen').forEach((s) => (s.hidden = true));
     const target = $('screen-' + name);
@@ -59,7 +61,7 @@
       else GameSound.stopWelcomeLoop();
     }
   }
-
+ 
   /* ============ تحميل الإعدادات ============ */
   async function loadConfig() {
     try {
@@ -83,7 +85,7 @@
       $('error-message').textContent = e.message || 'الرابط غير صحيح أو الكامبين متوقف';
     }
   }
-
+ 
   function applyTheme() {
     const root = document.documentElement;
     const th = config.theme;
@@ -106,14 +108,16 @@
        gameRoot.style.backgroundSize = 'cover';
        gameRoot.style.backgroundPosition = 'center';
      }
-   }
-
+    }
+    applyDir();
+  }
+ 
   function applyDir() {
     const html = $('html-root');
     html.lang = playerLang;
     html.dir = playerLang === 'ar' ? 'rtl' : 'ltr';
   }
-
+ 
   function setupLangToggle() {
     const btn = $('lang-toggle-btn');
     if (config.meta.language === 'both') {
@@ -135,7 +139,7 @@
       btn.hidden = true;
     }
   }
-
+ 
   /* ============ الشعارات ============ */
   function renderLogos(screenName) {
     const layer = $('logos-layer');
@@ -153,7 +157,7 @@
       layer.appendChild(img);
     });
   }
-
+ 
   /* ============ شاشة المقدمة ============ */
   function setupIntro() {
     const mediaBg = $('intro-media-bg');
@@ -173,13 +177,13 @@
     $('intro-subtitle').textContent = t(config.intro.subtitle);
     $('btn-start').textContent = t(config.intro.startButtonText);
   }
-
+ 
   $('btn-start').addEventListener('click', () => {
     tryFullscreen();
     // في وضع spinFirst العميل يلف العجلة الأول من غير بيانات، وبعدين لو فاز يسجل بياناته
     showScreen(isSpinFirst() ? 'wheel' : 'form');
   });
-
+ 
   function tryFullscreen() {
     try {
       const el = document.documentElement;
@@ -190,10 +194,10 @@
       }
     } catch (e) { /* أفضل محاولة فقط - مش لازم تنجح في كل الأجهزة */ }
   }
-
+ 
   /* ============ شاشة الفورم ============ */
   let selectedInterests = [];
-
+ 
   function setupForm() {
     const fields = config.form.fields;
     // في وضع spinFirst شاشة الفورم دايمًا بتبقى شاشة "سجّل بياناتك لاستلام الجائزة" بعد اللفة
@@ -205,12 +209,12 @@
       $('form-subtitle').textContent = t(config.form.subtitle);
     }
     $('btn-submit').textContent = t(config.form.submitButtonText);
-
+ 
     setField('name', fields.name);
     setField('phone', fields.phone);
     setField('position', fields.position);
     setField('email', fields.email);
-
+ 
     const interestsField = document.querySelector('.form-field[data-field="interests"]');
     if (!fields.interests.enabled) {
       interestsField.style.display = 'none';
@@ -219,10 +223,10 @@
       $('label-interests').textContent = t(fields.interests.label) + (fields.interests.required ? ' *' : '');
       buildInterestsPanel();
     }
-
+ 
     buildCustomFields();
   }
-
+ 
   /* ============ الحقول الحرة اللي ضافها الأدمن ============ */
   let customFieldValues = {};
   function buildCustomFields() {
@@ -236,7 +240,7 @@
       const label = document.createElement('label');
       label.textContent = t(def.label) + (def.required ? ' *' : '');
       wrap.appendChild(label);
-
+ 
       if (def.type === 'select') {
         const select = document.createElement('select');
         select.id = 'custom-field-' + def.id;
@@ -262,14 +266,14 @@
       container.appendChild(wrap);
     });
   }
-
+ 
   function setField(key, fieldCfg) {
     const wrap = document.querySelector(`.form-field[data-field="${key}"]`);
     if (!fieldCfg.enabled) { wrap.style.display = 'none'; return; }
     wrap.style.display = '';
     $('label-' + key).textContent = t(fieldCfg.label) + (fieldCfg.required ? ' *' : '');
   }
-
+ 
   function buildInterestsPanel() {
     const panel = $('interests-panel');
     const btn = $('interests-btn');
@@ -282,7 +286,7 @@
       panel.appendChild(row);
     });
     updateInterestsButtonLabel();
-
+ 
     panel.addEventListener('change', (e) => {
       if (e.target.type !== 'checkbox') return;
       const id = e.target.value;
@@ -290,13 +294,13 @@
       else selectedInterests = selectedInterests.filter((x) => x !== id);
       updateInterestsButtonLabel();
     });
-
+ 
     btn.onclick = () => { panel.hidden = !panel.hidden; };
     document.addEventListener('click', (e) => {
       if (!document.getElementById('interests-select').contains(e.target)) panel.hidden = true;
     });
   }
-
+ 
   function updateInterestsButtonLabel() {
     const btn = $('interests-btn');
     if (selectedInterests.length === 0) {
@@ -308,18 +312,18 @@
       btn.textContent = names.join('، ');
     }
   }
-
+ 
   $('lead-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const fields = config.form.fields;
     const errBox = $('form-error');
     errBox.textContent = '';
-
+ 
     const name = $('input-name').value.trim();
     let phone = $('input-phone').value.trim();
     const position = $('input-position').value.trim();
     const email = $('input-email').value.trim();
-
+ 
     if (fields.name.enabled && fields.name.required && !name) {
       errBox.textContent = playerLang === 'ar' ? 'من فضلك أدخل الاسم' : 'Please enter your name';
       return;
@@ -354,21 +358,21 @@
         return;
       }
     }
-
+ 
     const submitBtn = $('btn-submit');
     submitBtn.disabled = true;
     try {
       const interestLabels = (config.form.interestsList || [])
         .filter((it) => selectedInterests.includes(it.id))
         .map((it) => it.ar || it.en);
-
+ 
       formData = {
         name, phone, position, email,
         interests: interestLabels,
         interestIds: selectedInterests.slice(),
         customFields: { ...customFieldValues }
       };
-
+ 
       if (isSpinFirst()) {
         // العميل لف العجلة وفاز قبل كده (pendingResult) - دلوقتي نسجل بياناته عشان يستلم جائزته
         const res = await fetch('/api/public/campaigns/' + encodeURIComponent(slug) + '/register-winner', {
@@ -381,7 +385,7 @@
         showResult(data);
         return;
       }
-
+ 
       if (fields.phone.enabled && phone) {
         const checkRes = await fetch('/api/public/campaigns/' + encodeURIComponent(slug) + '/check-phone', {
           method: 'POST',
@@ -394,7 +398,7 @@
           return;
         }
       }
-
+ 
       showScreen('wheel');
     } catch (err) {
       errBox.textContent = err.message || (playerLang === 'ar' ? 'حدث خطأ، حاول تاني' : 'Something went wrong, please try again');
@@ -402,39 +406,39 @@
       submitBtn.disabled = false;
     }
   });
-
+ 
   /* ============ شاشة العجلة ============ */
   let wheelCtx = null;
-
+ 
   function setupWheelScreen() {
     $('btn-spin').textContent = t(config.wheel.spinButtonText) || (playerLang === 'ar' ? 'دور العجلة 🎯' : 'Spin the Wheel 🎯');
-
+ 
     const titleText = t(config.wheel.title);
     $('wheel-title').textContent = titleText;
     $('wheel-title').hidden = !titleText;
     const subtitleText = t(config.wheel.subtitle);
     $('wheel-subtitle').textContent = subtitleText;
     $('wheel-subtitle').hidden = !subtitleText;
-
+ 
     const wheelMediaBg = $('wheel-media-bg');
     wheelMediaBg.style.backgroundImage = config.wheel.mediaUrl ? `url(${config.wheel.mediaUrl})` : '';
-
+ 
     if (config.wheel.centerImage) {
       $('wheel-center-img').hidden = false;
       $('wheel-center-img').style.backgroundImage = `url(${config.wheel.centerImage})`;
     }
-
+ 
     const screenWheel = $('screen-wheel');
     const glowOn = !!(config.wheel.glow && config.wheel.glow.enabled);
     screenWheel.classList.toggle('glow-on', glowOn);
     screenWheel.style.setProperty('--wheel-glow-color', (config.wheel.glow && config.wheel.glow.color) || '#00d4ff');
     $('wheel-holder').classList.toggle('style-photogrid', config.wheel.style === 'photoGrid');
-
+ 
     wheelCtx = $('game-wheel-canvas').getContext('2d');
     renderWheel();
     $('wheel-pointer').style.color = config.wheel.pointerColor || '#ffb703';
   }
-
+ 
   // بيختار الرسّام المناسب حسب ستايل العجلة المحفوظ في الكامبين (classic = كانفاس، photoGrid = صور كاملة لكل قسم)
   function renderWheel() {
     if (config.wheel.style === 'photoGrid') {
@@ -447,13 +451,13 @@
       drawWheelCanvas();
     }
   }
-
+ 
   // زاوية (بالدرجات، بدايةً من الأعلى مع دوران مع اتجاه الساعة) + نسبة من نص القطر (0-50) -> نقطة {x,y} كنسبة % داخل صندوق العجلة
   function pt(deg, rPct) {
     const rad = (deg * Math.PI) / 180;
     return { x: 50 + rPct * Math.sin(rad), y: 50 - rPct * Math.cos(rad) };
   }
-
+ 
   // عجلة "الصور الكاملة" (photoGrid) - كل قسم صورة تغطي القطاع بالكامل، القص الدائري النهائي
   // بيحصل عبر border-radius:50% + overflow:hidden على الحاوية نفسها (#wheel-photogrid في play.css)
   function buildPhotoGridWheel() {
@@ -465,11 +469,11 @@
     // بنمد نقط المضلع لمسافة أكبر من نص القطر (75 > 50) عشان نضمن تغطية كاملة للقطاع
     // مهما كان عدد الأقسام - القص الدائري الفعلي مسؤول عنه العنصر الأب لوحده
     const farR = 75;
-
+ 
     segments.forEach((seg, i) => {
       const startDeg = i * anglePer;
       const endDeg = startDeg + anglePer;
-
+ 
       // أصغر صندوق مربع بيحتوي القطاع بالكامل (المركز + بداية ونهاية القوس + أي اتجاه
       // أساسي فوق/يمين/تحت/شمال يقع داخل مدى القطاع) - بنعرض صورة المنتج "cover" جوه
       // الصندوق ده بالذات (مش جوه العجلة كلها) عشان تتمركز صحيح كأنها ملء الربع/القطاع
@@ -483,7 +487,7 @@
       const boxTop = Math.min(...ys);
       const boxW = Math.max(...xs) - boxLeft;
       const boxH = Math.max(...ys) - boxTop;
-
+ 
       // تحويل نقطة بنسبة % من العجلة الكاملة (0-100) لنسبة % محليّة جوه صندوق القطاع نفسه
       const toLocal = (p) => ({
         x: boxW ? ((p.x - boxLeft) / boxW) * 100 : 0,
@@ -492,7 +496,7 @@
       const centerLocal = toLocal({ x: 50, y: 50 });
       const p1Local = toLocal(pt(startDeg, farR));
       const p2Local = toLocal(pt(endDeg, farR));
-
+ 
       const slice = document.createElement('div');
       slice.className = 'pg-slice';
       slice.style.left = boxLeft + '%';
@@ -506,7 +510,7 @@
         slice.style.background = seg.color || '#666';
       }
       wrap.appendChild(slice);
-
+ 
       if (seg.text && seg.text.showLabel !== false && t(seg.label)) {
         const midDeg = (startDeg + endDeg) / 2;
         const distFrac = (seg.text.distancePct ?? 68) / 100;
@@ -522,7 +526,7 @@
       }
     });
   }
-
+ 
   function drawWheelCanvas() {
     const canvas = $('game-wheel-canvas');
     const ctx = wheelCtx;
@@ -535,7 +539,7 @@
     if (segments.length === 0) return;
     const anglePer = (Math.PI * 2) / segments.length;
     let start = -Math.PI / 2;
-
+ 
     segments.forEach((seg) => {
       const end = start + anglePer;
       ctx.save();
@@ -548,11 +552,11 @@
       // نحصر أي صورة/رمز/نص جوه حدود القسم نفسه (مش هيبقى ينفع يخرج برة القسم أو برة حدود العجلة)
       // حتى لو الأدمن رفع صورة كبيرة أو زوّد نسبة الحجم/المسافة من غير قصد
       ctx.clip();
-
+ 
       const mid = (start + end) / 2;
       ctx.translate(cx, cy);
       ctx.rotate(mid);
-
+ 
       if (seg.image && seg.image.url && segImageCache[seg.id]) {
         const dist = ((seg.image.distancePct ?? 40) / 100) * radius;
         let halfW = (((seg.image.widthPct ?? 22) / 100) * radius * 2) / 2;
@@ -565,7 +569,7 @@
         const maxHalfByOuterEdge = radius - dist;
         halfW = Math.max(4, Math.min(halfW, maxHalfByAngle, maxHalfByOuterEdge));
         const w = halfW * 2;
-
+ 
         const img = segImageCache[seg.id];
         const naturalW = img.naturalWidth || img.width || 1;
         const naturalH = img.naturalHeight || img.height || 1;
@@ -574,14 +578,14 @@
         let dw = w, dh = w;
         if (ratio > 1) dh = w / ratio;
         else if (ratio < 1) dw = w * ratio;
-
+ 
         ctx.save();
         ctx.translate(dist, 0);
         ctx.rotate(Math.PI / 2);
         try { ctx.drawImage(img, -dw / 2, -dh / 2, dw, dh); } catch (e) {}
         ctx.restore();
       }
-
+ 
       if (seg.icon && seg.icon.value) {
         const dist = ((seg.icon.distancePct ?? 25) / 100) * radius;
         const size = ((seg.icon.sizePct ?? 16) / 100) * radius;
@@ -594,7 +598,7 @@
         ctx.fillText(seg.icon.value, 0, 0);
         ctx.restore();
       }
-
+ 
       if (seg.text && seg.text.showLabel !== false) {
         const dist = ((seg.text.distancePct ?? 68) / 100) * radius;
         ctx.fillStyle = seg.text.color || seg.textColor || '#fff';
@@ -607,11 +611,11 @@
         wrapCanvasText(ctx, t(seg.label), 0, 0, radius * 0.55, scaleFont(seg.text.fontSize) + 4);
         ctx.restore();
       }
-
+ 
       ctx.restore();
       start = end;
     });
-
+ 
     if (bw > 0) {
       ctx.beginPath();
       ctx.arc(cx, cy, radius + bw / 2, 0, Math.PI * 2);
@@ -620,10 +624,10 @@
       ctx.stroke();
     }
   }
-
+ 
   // العجلة على الشاشة مرسومة بدقة 800px بينما الكانفاس بيتعرض بحجم أصغر - نكبر حجم الخط نسبيًا
   function scaleFont(size) { return (size || 14) * 2; }
-
+ 
   function wrapCanvasText(ctx, text, x, y, maxWidth, lineHeight) {
     if (!text) return;
     const words = text.split(' ');
@@ -638,7 +642,7 @@
     const offset = ((lines.length - 1) * lineHeight) / 2;
     lines.forEach((l, i) => ctx.fillText(l, x, y - offset + i * lineHeight));
   }
-
+ 
   const segImageCache = {};
   function preloadSegmentImages() {
     (config.wheel.segments || []).forEach((seg) => {
@@ -650,7 +654,7 @@
       }
     });
   }
-
+ 
   $('btn-spin').addEventListener('click', async () => {
     const btn = $('btn-spin');
     btn.disabled = true;
@@ -680,14 +684,14 @@
       alert(e.message);
     }
   });
-
+ 
   function spinToSegment(index, onDone) {
     const rotor = $('wheel-rotor');
     const segments = config.wheel.segments || [];
     const anglePerDeg = 360 / segments.length;
     const targetSegmentCenterDeg = (index + 0.5) * anglePerDeg; // بالنسبة لبداية القطاع الأول عند الأعلى
     const extraTurns = (Number(config.wheel.spinExtraTurns) || 6) * 360;
-
+ 
     // الزاوية المطلوب يستقر عليها الكانفاس (مقاس 0-360) عشان القسم المطلوب يوصل تحت المؤشر الثابت أعلى العجلة
     const desiredRestingMod = (360 - (targetSegmentCenterDeg % 360)) % 360;
     const currentRestingMod = ((wheelRotation % 360) + 360) % 360;
@@ -695,14 +699,14 @@
     if (delta <= 0) delta += 360; // نضمن إن العجلة دايمًا تلف لقدام مش ترجع لورا
     const targetRotation = wheelRotation + extraTurns + delta;
     const durationMs = Number(config.wheel.spinDurationMs) || 4500;
-
+ 
     rotor.style.transition = `transform ${durationMs}ms cubic-bezier(.17,.67,.2,1)`;
     rotor.style.transform = `rotate(${targetRotation}deg)`;
     wheelRotation = targetRotation;
-
+ 
     setTimeout(onDone, durationMs + 150);
   }
-
+ 
   /* ============ بوب أب النتيجة ============ */
   function showResult(data) {
     const popupCfg = data.resultPopup;
@@ -711,13 +715,13 @@
     $('result-subtitle').textContent = t(popupCfg.subtitle);
     $('result-prize').textContent = t(data.winner.label);
     $('btn-result-close').textContent = t(popupCfg.buttonText);
-
+ 
     // بنفضّل صورة الجائزة نفسها من العجلة، ولو مش موجودة نستخدم صورة البوب أب العامة
     const img = $('result-image');
     const segImageUrl = data.winner.image && data.winner.image.url;
     const imageToShow = segImageUrl || popupCfg.imageUrl;
     if (imageToShow) { img.src = imageToShow; img.hidden = false; } else img.hidden = true;
-
+ 
     // كود الفاوتشر/استلام الجائزة (لو مفعّل في الكامبين) - بييجي من السيرفر مع نتيجة اللفة/التسجيل
     const voucherBox = $('result-voucher');
     if (data.voucherCode) {
@@ -727,25 +731,25 @@
     } else {
       voucherBox.hidden = true;
     }
-
+ 
     $('result-overlay').hidden = false;
-
+ 
     if (popupCfg.showConfetti) fireConfetti();
-
+ 
     if (window.GameSound) {
       const isWin = data.winner.type === 'win';
       if (isWin) GameSound.playWinSound();
       GameSound.speakResult(formData.name, t(data.winner.label), isWin, playerLang);
     }
   }
-
+ 
   $('btn-result-close').addEventListener('click', () => {
     $('result-overlay').hidden = true;
     clearConfetti();
     // إعادة تعيين العجلة والفورم لتجهيز اللعبة للعميل التالي
     resetForNextPlayer();
   });
-
+ 
   function resetForNextPlayer() {
     const rotor = $('wheel-rotor');
     rotor.style.transition = 'none';
@@ -761,11 +765,11 @@
     // في وضع spinFirst شاشة العجلة نفسها هي شاشة الاستقبال بين عميل وعميل (مش المقدمة)
     showScreen(isSpinFirst() ? 'wheel' : 'intro');
   }
-
+ 
   /* ============ الاحتفال (كونفيتي) - تنفيذ خفيف بدون مكتبات خارجية ============ */
   let confettiParticles = [];
   let confettiAnimId = null;
-
+ 
   function fireConfetti() {
     const canvas = $('confetti-canvas');
     const ctx = canvas.getContext('2d');
@@ -810,7 +814,7 @@
     }
     confettiAnimId = requestAnimationFrame(frame);
   }
-
+ 
   function clearConfetti() {
     if (confettiAnimId) cancelAnimationFrame(confettiAnimId);
     const canvas = $('confetti-canvas');
@@ -818,13 +822,14 @@
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     confettiParticles = [];
   }
-
+ 
   window.addEventListener('resize', () => {
     const canvas = $('confetti-canvas');
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
   });
-
+ 
   /* ============ التشغيل ============ */
   loadConfig().then(() => { if (config) preloadSegmentImages(); });
 })();
+ 
