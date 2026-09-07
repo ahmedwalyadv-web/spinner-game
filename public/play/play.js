@@ -96,12 +96,17 @@
     root.style.setProperty('--font', th.fontFamily);
     document.body.style.fontFamily = th.fontFamily;
     if (th.backgroundImage) {
-      document.body.style.backgroundImage = `url(${th.backgroundImage})`;
-      document.body.style.backgroundSize = 'cover';
-      document.body.style.backgroundPosition = 'center';
-    }
-    applyDir();
-  }
+     const bgCss = `url(${th.backgroundImage})`;
+     document.body.style.backgroundImage = bgCss;
+     document.body.style.backgroundSize = 'cover';
+     document.body.style.backgroundPosition = 'center';
+     const gameRoot = document.getElementById('game-root');
+     if (gameRoot) {
+       gameRoot.style.backgroundImage = bgCss;
+       gameRoot.style.backgroundSize = 'cover';
+       gameRoot.style.backgroundPosition = 'center';
+     }
+   }
 
   function applyDir() {
     const html = $('html-root');
