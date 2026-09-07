@@ -17,6 +17,11 @@
     return bilingual[playerLang] || bilingual.ar || bilingual.en || '';
   }
 
+  // وضع "يلف الأول وبعدين يسجل بياناته لاستلام الجائزة" - لو مش مفعّل، السلوك زي ما كان (بيانات الأول)
+  function isSpinFirst() {
+    return !!(config && config.flow && config.flow.order === 'spinFirst');
+  }
+
   // تحقق من شكل رقم التليفون حسب إعدادات الكامبين (عدد أرقام إجباري و/أو بادئة إجبارية زي "05").
   // بيرجع { ok:true, value } برقم "نظيف" (أرقام بس) لو الشكل صحيح، أو { ok:false, message } لو غلط.
   function validatePhoneFormat(phone, validation) {
@@ -47,7 +52,10 @@
     if (target) target.hidden = false;
     renderLogos(name);
     if (window.GameSound) {
-      if (name === 'intro') GameSound.startWelcomeLoop(playerLang);
+      // في وضع spinFirst، شاشة العجلة هي شاشة الاستقبال/الانتظار بين العملاء (بدل المقدمة)
+      // فلازم نداء الترحيب الصوتي الدوري يبدأ عليها هي كمان
+      const isWelcomeScreen = name === 'intro' || (isSpinFirst() && name === 'wheel');
+      if (isWelcomeScreen) GameSound.startWelcomeLoop(playerLang);
       else GameSound.stopWelcomeLoop();
     }
   }
@@ -112,8 +120,10 @@
         applyDir();
         setupIntro();
         setupForm();
-        drawWheelCanvas();
-        if (window.GameSound && !$('screen-intro').hidden) GameSound.startWelcomeLoop(playerLang);
+        renderWheel();
+        if (window.GameSound && (!$('screen-intro').hidden || (isSpinFirst() && !$('screen-wheel').hidden))) {
+          GameSound.startWelcomeLoop(playerLang);
+        }
       };
     } else {
       playerLang = config.meta.language === 'en' ? 'en' : 'ar';
@@ -161,7 +171,8 @@
 
   $('btn-start').addEventListener('click', () => {
     tryFullscreen();
-    showScreen('form');
+    // في وضع spinFirst العميل يلف العجلة الأول من غير بيانات، وبعدين لو فاز يسجل بياناته
+    showScreen(isSpinFirst() ? 'wheel' : 'form');
   });
 
   function tryFullscreen() {
@@ -180,8 +191,14 @@
 
   function setupForm() {
     const fields = config.form.fields;
-    $('form-title').textContent = t(config.form.title);
-    $('form-subtitle').textContent = t(config.form.subtitle);
+    // في وضع spinFirst شاشة الفورم دايمًا بتبقى شاشة "سجّل بياناتك لاستلام الجائزة" بعد اللفة
+    if (isSpinFirst()) {
+      $('form-title').textContent = t(config.flow.registerTitle) || t(config.form.title);
+      $('form-subtitle').textContent = t(config.flow.registerSubtitle) || t(config.form.subtitle);
+    } else {
+      $('form-title').textContent = t(config.form.title);
+      $('form-subtitle').textContent = t(config.form.subtitle);
+    }
     $('btn-submit').textContent = t(config.form.submitButtonText);
 
     setField('name', fields.name);
@@ -336,6 +353,30 @@
     const submitBtn = $('btn-submit');
     submitBtn.disabled = true;
     try {
+      const interestLabels = (config.form.interestsList || [])
+        .filter((it) => selectedInterests.includes(it.id))
+        .map((it) => it.ar || it.en);
+
+      formData = {
+        name, phone, position, email,
+        interests: interestLabels,
+        interestIds: selectedInterests.slice(),
+        customFields: { ...customFieldValues }
+      };
+
+      if (isSpinFirst()) {
+        // العميل لف العجلة وفاز قبل كده (pendingResult) - دلوقتي نسجل بياناته عشان يستلم جائزته
+        const res = await fetch('/api/public/campaigns/' + encodeURIComponent(slug) + '/register-winner', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...formData, segmentId: pendingResult && pendingResult.segmentId })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || (playerLang === 'ar' ? 'حدث خطأ' : 'Something went wrong'));
+        showResult(data);
+        return;
+      }
+
       if (fields.phone.enabled && phone) {
         const checkRes = await fetch('/api/public/campaigns/' + encodeURIComponent(slug) + '/check-phone', {
           method: 'POST',
@@ -349,19 +390,9 @@
         }
       }
 
-      const interestLabels = (config.form.interestsList || [])
-        .filter((it) => selectedInterests.includes(it.id))
-        .map((it) => it.ar || it.en);
-
-      formData = {
-        name, phone, position, email,
-        interests: interestLabels,
-        interestIds: selectedInterests.slice(),
-        customFields: { ...customFieldValues }
-      };
       showScreen('wheel');
     } catch (err) {
-      errBox.textContent = playerLang === 'ar' ? 'حدث خطأ، حاول تاني' : 'Something went wrong, please try again';
+      errBox.textContent = err.message || (playerLang === 'ar' ? 'حدث خطأ، حاول تاني' : 'Something went wrong, please try again');
     } finally {
       submitBtn.disabled = false;
     }
@@ -371,14 +402,120 @@
   let wheelCtx = null;
 
   function setupWheelScreen() {
-    $('btn-spin').textContent = playerLang === 'ar' ? 'دور العجلة 🎯' : 'Spin the Wheel 🎯';
+    $('btn-spin').textContent = t(config.wheel.spinButtonText) || (playerLang === 'ar' ? 'دور العجلة 🎯' : 'Spin the Wheel 🎯');
+
+    const titleText = t(config.wheel.title);
+    $('wheel-title').textContent = titleText;
+    $('wheel-title').hidden = !titleText;
+    const subtitleText = t(config.wheel.subtitle);
+    $('wheel-subtitle').textContent = subtitleText;
+    $('wheel-subtitle').hidden = !subtitleText;
+
+    const wheelMediaBg = $('wheel-media-bg');
+    wheelMediaBg.style.backgroundImage = config.wheel.mediaUrl ? `url(${config.wheel.mediaUrl})` : '';
+
     if (config.wheel.centerImage) {
       $('wheel-center-img').hidden = false;
       $('wheel-center-img').style.backgroundImage = `url(${config.wheel.centerImage})`;
     }
+
+    const screenWheel = $('screen-wheel');
+    const glowOn = !!(config.wheel.glow && config.wheel.glow.enabled);
+    screenWheel.classList.toggle('glow-on', glowOn);
+    screenWheel.style.setProperty('--wheel-glow-color', (config.wheel.glow && config.wheel.glow.color) || '#00d4ff');
+    $('wheel-holder').classList.toggle('style-photogrid', config.wheel.style === 'photoGrid');
+
     wheelCtx = $('game-wheel-canvas').getContext('2d');
-    drawWheelCanvas();
+    renderWheel();
     $('wheel-pointer').style.color = config.wheel.pointerColor || '#ffb703';
+  }
+
+  // بيختار الرسّام المناسب حسب ستايل العجلة المحفوظ في الكامبين (classic = كانفاس، photoGrid = صور كاملة لكل قسم)
+  function renderWheel() {
+    if (config.wheel.style === 'photoGrid') {
+      $('game-wheel-canvas').hidden = true;
+      $('wheel-photogrid').hidden = false;
+      buildPhotoGridWheel();
+    } else {
+      $('wheel-photogrid').hidden = true;
+      $('game-wheel-canvas').hidden = false;
+      drawWheelCanvas();
+    }
+  }
+
+  // زاوية (بالدرجات، بدايةً من الأعلى مع دوران مع اتجاه الساعة) + نسبة من نص القطر (0-50) -> نقطة {x,y} كنسبة % داخل صندوق العجلة
+  function pt(deg, rPct) {
+    const rad = (deg * Math.PI) / 180;
+    return { x: 50 + rPct * Math.sin(rad), y: 50 - rPct * Math.cos(rad) };
+  }
+
+  // عجلة "الصور الكاملة" (photoGrid) - كل قسم صورة تغطي القطاع بالكامل، القص الدائري النهائي
+  // بيحصل عبر border-radius:50% + overflow:hidden على الحاوية نفسها (#wheel-photogrid في play.css)
+  function buildPhotoGridWheel() {
+    const wrap = $('wheel-photogrid');
+    wrap.innerHTML = '';
+    const segments = config.wheel.segments || [];
+    if (segments.length === 0) return;
+    const anglePer = 360 / segments.length;
+    // بنمد نقط المضلع لمسافة أكبر من نص القطر (75 > 50) عشان نضمن تغطية كاملة للقطاع
+    // مهما كان عدد الأقسام - القص الدائري الفعلي مسؤول عنه العنصر الأب لوحده
+    const farR = 75;
+
+    segments.forEach((seg, i) => {
+      const startDeg = i * anglePer;
+      const endDeg = startDeg + anglePer;
+
+      // أصغر صندوق مربع بيحتوي القطاع بالكامل (المركز + بداية ونهاية القوس + أي اتجاه
+      // أساسي فوق/يمين/تحت/شمال يقع داخل مدى القطاع) - بنعرض صورة المنتج "cover" جوه
+      // الصندوق ده بالذات (مش جوه العجلة كلها) عشان تتمركز صحيح كأنها ملء الربع/القطاع
+      // فعليًا زي التصميم الأصلي، ولو كان عدد الأقسام 4 الصندوق ده بيطابق تمامًا ربع العجلة
+      const cardinals = [0, 90, 180, 270, 360].filter((d) => d >= startDeg && d <= endDeg);
+      const boundaryAngles = [startDeg, endDeg, ...cardinals];
+      const boundaryPts = boundaryAngles.map((d) => pt(d, 50));
+      const xs = [50, ...boundaryPts.map((p) => p.x)];
+      const ys = [50, ...boundaryPts.map((p) => p.y)];
+      const boxLeft = Math.min(...xs);
+      const boxTop = Math.min(...ys);
+      const boxW = Math.max(...xs) - boxLeft;
+      const boxH = Math.max(...ys) - boxTop;
+
+      // تحويل نقطة بنسبة % من العجلة الكاملة (0-100) لنسبة % محليّة جوه صندوق القطاع نفسه
+      const toLocal = (p) => ({
+        x: boxW ? ((p.x - boxLeft) / boxW) * 100 : 0,
+        y: boxH ? ((p.y - boxTop) / boxH) * 100 : 0
+      });
+      const centerLocal = toLocal({ x: 50, y: 50 });
+      const p1Local = toLocal(pt(startDeg, farR));
+      const p2Local = toLocal(pt(endDeg, farR));
+
+      const slice = document.createElement('div');
+      slice.className = 'pg-slice';
+      slice.style.left = boxLeft + '%';
+      slice.style.top = boxTop + '%';
+      slice.style.width = boxW + '%';
+      slice.style.height = boxH + '%';
+      slice.style.clipPath = `polygon(${centerLocal.x}% ${centerLocal.y}%, ${p1Local.x}% ${p1Local.y}%, ${p2Local.x}% ${p2Local.y}%)`;
+      if (seg.image && seg.image.url) {
+        slice.style.backgroundImage = `url(${seg.image.url})`;
+      } else {
+        slice.style.background = seg.color || '#666';
+      }
+      wrap.appendChild(slice);
+
+      if (seg.text && seg.text.showLabel !== false && t(seg.label)) {
+        const midDeg = (startDeg + endDeg) / 2;
+        const distFrac = (seg.text.distancePct ?? 68) / 100;
+        const p = pt(midDeg, distFrac * 50);
+        const label = document.createElement('div');
+        label.className = 'pg-slice-label';
+        label.textContent = t(seg.label);
+        label.style.left = p.x + '%';
+        label.style.top = p.y + '%';
+        label.style.color = seg.text.color || seg.textColor || '#fff';
+        label.style.fontSize = (seg.text.fontSize || 14) + 'px';
+        wrap.appendChild(label);
+      }
+    });
   }
 
   function drawWheelCanvas() {
@@ -503,7 +640,7 @@
       if (seg.image && seg.image.url) {
         const img = new Image();
         img.crossOrigin = 'anonymous';
-        img.onload = () => { segImageCache[seg.id] = img; drawWheelCanvas(); };
+        img.onload = () => { segImageCache[seg.id] = img; if (config.wheel.style !== 'photoGrid') drawWheelCanvas(); };
         img.src = seg.image.url;
       }
     });
@@ -513,10 +650,12 @@
     const btn = $('btn-spin');
     btn.disabled = true;
     try {
-      const res = await fetch('/api/public/campaigns/' + encodeURIComponent(slug) + '/spin', {
+      const spinFirst = isSpinFirst();
+      const endpoint = spinFirst ? '/spin-only' : '/spin';
+      const res = await fetch('/api/public/campaigns/' + encodeURIComponent(slug) + endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(spinFirst ? {} : formData)
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'حدث خطأ');
@@ -524,7 +663,12 @@
       if (window.GameSound) GameSound.startSpinSound(Number(config.wheel.spinDurationMs) || 4500);
       spinToSegment(data.segmentIndex, () => {
         if (window.GameSound) GameSound.stopSpinSound();
-        showResult(data);
+        if (spinFirst) {
+          // العميل فاز - نوديه لشاشة التسجيل عشان ياخد بياناته ويستلم جائزته
+          showScreen('form');
+        } else {
+          showResult(data);
+        }
       });
     } catch (e) {
       btn.disabled = false;
@@ -533,7 +677,7 @@
   });
 
   function spinToSegment(index, onDone) {
-    const canvas = $('game-wheel-canvas');
+    const rotor = $('wheel-rotor');
     const segments = config.wheel.segments || [];
     const anglePerDeg = 360 / segments.length;
     const targetSegmentCenterDeg = (index + 0.5) * anglePerDeg; // بالنسبة لبداية القطاع الأول عند الأعلى
@@ -547,8 +691,8 @@
     const targetRotation = wheelRotation + extraTurns + delta;
     const durationMs = Number(config.wheel.spinDurationMs) || 4500;
 
-    canvas.style.transition = `transform ${durationMs}ms cubic-bezier(.17,.67,.2,1)`;
-    canvas.style.transform = `rotate(${targetRotation}deg)`;
+    rotor.style.transition = `transform ${durationMs}ms cubic-bezier(.17,.67,.2,1)`;
+    rotor.style.transform = `rotate(${targetRotation}deg)`;
     wheelRotation = targetRotation;
 
     setTimeout(onDone, durationMs + 150);
@@ -569,6 +713,16 @@
     const imageToShow = segImageUrl || popupCfg.imageUrl;
     if (imageToShow) { img.src = imageToShow; img.hidden = false; } else img.hidden = true;
 
+    // كود الفاوتشر/استلام الجائزة (لو مفعّل في الكامبين) - بييجي من السيرفر مع نتيجة اللفة/التسجيل
+    const voucherBox = $('result-voucher');
+    if (data.voucherCode) {
+      $('result-voucher-label').textContent = t(config.voucher.label) || (playerLang === 'ar' ? 'كود استلام الجائزة' : 'Prize pickup code');
+      $('result-voucher-code').textContent = data.voucherCode;
+      voucherBox.hidden = false;
+    } else {
+      voucherBox.hidden = true;
+    }
+
     $('result-overlay').hidden = false;
 
     if (popupCfg.showConfetti) fireConfetti();
@@ -588,16 +742,19 @@
   });
 
   function resetForNextPlayer() {
-    const canvas = $('game-wheel-canvas');
-    canvas.style.transition = 'none';
-    canvas.style.transform = 'rotate(0deg)';
+    const rotor = $('wheel-rotor');
+    rotor.style.transition = 'none';
+    rotor.style.transform = 'rotate(0deg)';
     wheelRotation = 0;
     selectedInterests = [];
     customFieldValues = {};
+    formData = {};
+    pendingResult = null;
     document.getElementById('lead-form').reset();
     updateInterestsButtonLabel();
     $('btn-spin').disabled = false;
-    showScreen('intro');
+    // في وضع spinFirst شاشة العجلة نفسها هي شاشة الاستقبال بين عميل وعميل (مش المقدمة)
+    showScreen(isSpinFirst() ? 'wheel' : 'intro');
   }
 
   /* ============ الاحتفال (كونفيتي) - تنفيذ خفيف بدون مكتبات خارجية ============ */

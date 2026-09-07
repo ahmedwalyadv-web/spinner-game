@@ -85,10 +85,16 @@
 
   <!-- ===== شاشة العجلة ===== -->
   <div id="screen-wheel" class="screen" hidden>
+    <div class="media-bg" id="wheel-media-bg"></div>
     <div class="wheel-stage center-col">
+      <h1 id="wheel-title" class="wheel-title" hidden></h1>
+      <p id="wheel-subtitle" class="wheel-subtitle" hidden></p>
       <div class="wheel-holder" id="wheel-holder">
         <div class="wheel-pointer" id="wheel-pointer">▼</div>
-        <canvas id="game-wheel-canvas" width="800" height="800"></canvas>
+        <div class="wheel-rotor" id="wheel-rotor">
+          <canvas id="game-wheel-canvas" width="800" height="800"></canvas>
+          <div class="wheel-photogrid" id="wheel-photogrid" hidden></div>
+        </div>
         <div class="wheel-center-img" id="wheel-center-img" hidden></div>
       </div>
       <button id="btn-spin" class="btn-main btn-spin"></button>
@@ -104,6 +110,10 @@
       <div id="result-name" class="result-name"></div>
       <p id="result-subtitle"></p>
       <div id="result-prize" class="result-prize"></div>
+      <div id="result-voucher" class="result-voucher" hidden>
+        <div id="result-voucher-label" class="result-voucher-label"></div>
+        <div id="result-voucher-code" class="result-voucher-code"></div>
+      </div>
       <button id="btn-result-close" class="btn-main"></button>
     </div>
   </div>

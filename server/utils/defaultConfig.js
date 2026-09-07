@@ -56,6 +56,21 @@ function defaultCampaignConfig(name) {
       // رابط Google Apps Script Web App - لو موجود، كل عملية لعب بتتسجل فورًا في Google Sheet المربوط بيه
       googleSheetWebhookUrl: ''
     },
+    flow: {
+      // 'dataFirst' (الافتراضي، السلوك الحالي): العميل يدخل بياناته الأول وبعدين يلف العجلة.
+      // 'spinFirst': العميل يلف العجلة على طول من غير بيانات، وبعدين لو فاز يسجل بياناته لاستلام الجائزة.
+      order: 'dataFirst',
+      // عنوان/نص شاشة التسجيل بعد اللفة (يستخدم بس لو order='spinFirst')
+      registerTitle: { ar: 'مبروك! سجّل بياناتك لاستلام جائزتك', en: 'Congrats! Register your details to collect your prize' },
+      registerSubtitle: { ar: 'من فضلك أدخل بياناتك عشان نقدر نجهزلك جائزتك', en: 'Please enter your details so we can prepare your prize' }
+    },
+    voucher: {
+      // لو مفعّل، كل عميل فايز بياخد كود فاوتشر فريد (يتسجل مع بياناته ويتبعت لجوجل شيت لو مربوط)
+      enabled: false,
+      prefix: '',
+      codeLength: 6,
+      label: { ar: 'كود استلام الجائزة', en: 'Prize pickup code' }
+    },
     sound: {
       enabled: true, // مفتاح رئيسي: لو متقفل هيقفل كل الأصوات والتفاعل الصوتي في الكامبين ده
       // اسم صوت Google Cloud TTS (Chirp3 HD) المستخدم وقت ما يكون فيه اتصال خارجي متاح - لو مش متاح بيرجع تلقائيًا لصوت المتصفح
@@ -85,6 +100,17 @@ function defaultCampaignConfig(name) {
       borderWidth: 8,
       centerImage: '',
       pointerColor: '#ffb703',
+      // 'classic' (الافتراضي): عجلة بألوان وأيقونة/نص لكل قسم (الشكل الحالي).
+      // 'photoGrid': كل قسم صورة كاملة تغطي القسم بالكامل، ببردر معدني وتوهج نيون حوالين العجلة.
+      style: 'classic',
+      glow: { enabled: false, color: '#00d4ff' },
+      spinButtonText: { ar: 'دور العجلة 🎯', en: 'Spin the Wheel 🎯' },
+      // عنوان/عنوان فرعي اختياري بيظهر فوق العجلة نفسها (مفيد في وضع spinFirst لأن شاشة العجلة
+      // بقت هي شاشة الاستقبال/الانتظار للعميل التالي بدل شاشة المقدمة) - فاضي = مخفي
+      title: { ar: '', en: '' },
+      subtitle: { ar: '', en: '' },
+      // صورة خلفية خاصة بشاشة العجلة (اختياري) - لو فاضية بتستخدم خلفية الكامبين العامة
+      mediaUrl: '',
       segments: [
         seg('s1', 'خصم 10%', 'Discount 10%', '#ff477e', 'win', 20, null, null),
         seg('s2', 'حظ أوفر المرة الجاية', 'Better Luck Next Time', '#3a3f66', 'lose', 40, null, null),

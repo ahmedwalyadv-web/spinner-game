@@ -110,11 +110,21 @@ input{font-family:inherit;}
 
 /* ---- شاشة العجلة ---- */
 #screen-wheel{justify-content:center;}
-.wheel-stage{gap:26px;}
+.wheel-stage{gap:26px;position:relative;z-index:2;}
+.wheel-title{font-size:clamp(20px,6vw,30px);font-weight:800;margin:0;text-shadow:0 2px 10px rgba(0,0,0,.5);}
+.wheel-subtitle{font-size:clamp(13px,3.6vw,16px);opacity:.85;margin:0;}
 .wheel-holder{
   position:relative;width:min(88vw,420px);height:min(88vw,420px);
 }
-.wheel-holder canvas{width:100%;height:100%;transform:rotate(0deg);}
+.wheel-rotor{position:absolute;inset:0;transform:rotate(0deg);}
+.wheel-rotor canvas{width:100%;height:100%;}
+.wheel-photogrid{position:absolute;inset:0;border-radius:50%;overflow:hidden;background:#1c1f3a;}
+.pg-slice{position:absolute;background-size:cover;background-position:center;}
+.pg-slice-label{
+  position:absolute;transform:translate(-50%,-50%);
+  font-weight:700;text-align:center;white-space:nowrap;pointer-events:none;
+  text-shadow:0 2px 6px rgba(0,0,0,.75);max-width:80px;
+}
 .wheel-pointer{
   position:absolute;top:-6px;left:50%;transform:translateX(-50%);
   font-size:34px;z-index:5;color:var(--primary);
@@ -123,10 +133,29 @@ input{font-family:inherit;}
 .wheel-center-img{
   position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
   width:22%;height:22%;border-radius:50%;background-size:cover;background-position:center;
-  border:3px solid #fff;
+  border:3px solid #fff;z-index:4;
 }
 .btn-spin{min-width:200px;}
 .btn-spin:disabled{opacity:.55;pointer-events:none;}
+
+/* ---- عجلة ستايل "الصور" (photoGrid) - بردر معدني حوالين العجلة ---- */
+.wheel-holder.style-photogrid:before{
+  content:'';position:absolute;inset:-10px;border-radius:50%;z-index:-1;
+  background:linear-gradient(135deg,#f2f2f2,#8a8a8a 25%,#fff 45%,#6b6b6b 65%,#e0e0e0 85%,#8a8a8a);
+  box-shadow:0 0 0 2px rgba(255,255,255,.4) inset,0 10px 30px rgba(0,0,0,.5);
+}
+
+/* ---- توهج نيون حوالين العجلة وزرار اللف (لو مفعّل من الأدمن) ---- */
+#screen-wheel.glow-on .wheel-holder:after{
+  content:'';position:absolute;inset:-18px;border-radius:50%;z-index:-2;pointer-events:none;
+  box-shadow:0 0 34px 10px var(--wheel-glow-color,#00d4ff);
+  animation:wheelGlowPulse 2.2s ease-in-out infinite;
+}
+@keyframes wheelGlowPulse{ 0%,100%{opacity:.7;} 50%{opacity:1;} }
+#screen-wheel.glow-on .btn-spin{
+  background:#12131c;color:#fff;border:1px solid rgba(255,255,255,.25);
+  box-shadow:0 0 18px 4px var(--wheel-glow-color,#00d4ff),0 8px 24px rgba(0,0,0,.5);
+}
 
 /* ---- الشعارات ---- */
 .logos-layer{position:absolute;inset:0;pointer-events:none;z-index:15;}
@@ -167,6 +196,12 @@ input{font-family:inherit;}
 .result-name:empty{display:none;margin:0;}
 .result-card p{opacity:.85;font-size:14px;margin:0 0 12px;}
 .result-prize{font-size:20px;font-weight:800;color:var(--primary);margin-bottom:20px;}
+.result-voucher{
+  margin:0 0 20px;padding:14px 12px;border-radius:14px;
+  background:rgba(255,255,255,.07);border:1px dashed rgba(255,255,255,.3);
+}
+.result-voucher-label{font-size:12px;opacity:.75;margin-bottom:6px;}
+.result-voucher-code{font-size:22px;font-weight:800;letter-spacing:3px;color:var(--primary);font-family:monospace;}
 
 .lang-toggle-btn{
   position:absolute;top:14px;inset-inline-end:14px;z-index:50;

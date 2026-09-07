@@ -69,6 +69,8 @@ safeAlter("ALTER TABLE leads ADD COLUMN interest_ids TEXT DEFAULT '[]'");
 safeAlter('ALTER TABLE leads ADD COLUMN phone_normalized TEXT');
 // فهرس على رقم التليفون يفيد في فحص "هل لعب قبل كده" بسرعة
 db.exec('CREATE INDEX IF NOT EXISTS idx_leads_campaign_phone ON leads(campaign_id, phone_normalized)');
+// كود الفاوتشر/الجائزة (لو الكامبين مفعّل فيه استلام الجائزة بكود) - فاضي لأي كامبين قديم
+safeAlter('ALTER TABLE leads ADD COLUMN voucher_code TEXT');
 
 // إنشاء حساب أدمن افتراضي عند أول تشغيل فقط
 const adminCount = db.prepare('SELECT COUNT(*) AS c FROM admins').get().c;
