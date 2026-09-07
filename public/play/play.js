@@ -396,15 +396,18 @@
 
     segments.forEach((seg) => {
       const end = start + anglePer;
+      ctx.save();
       ctx.beginPath();
       ctx.moveTo(cx, cy);
       ctx.arc(cx, cy, radius, start, end);
       ctx.closePath();
       ctx.fillStyle = seg.color || '#666';
       ctx.fill();
+      // نحصر أي صورة/رمز/نص جوه حدود القسم نفسه (مش هيبقى ينفع يخرج برة القسم أو برة حدود العجلة)
+      // حتى لو الأدمن رفع صورة كبيرة أو زوّد نسبة الحجم/المسافة من غير قصد
+      ctx.clip();
 
       const mid = (start + end) / 2;
-      ctx.save();
       ctx.translate(cx, cy);
       ctx.rotate(mid);
 
