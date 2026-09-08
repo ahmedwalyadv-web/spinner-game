@@ -252,7 +252,11 @@
           o.textContent = t(opt);
           select.appendChild(o);
         });
-        select.addEventListener('change', () => { customFieldValues[def.id] = select.value; });
+        select.addEventListener('change', () => {
+          // بنخزّن نص الإجابة (زي "نعم"/"لا") مش الـ id الداخلي بتاع الاختيار، عشان يظهر واضح في لوحة التحكم وفي جوجل شيت
+          const chosen = (def.options || []).find((o) => o.id === select.value);
+          customFieldValues[def.id] = chosen ? (chosen.ar || chosen.en || select.value) : select.value;
+        });
         wrap.appendChild(select);
       } else {
         const input = document.createElement('input');
@@ -830,4 +834,3 @@
   /* ============ التشغيل ============ */
   loadConfig().then(() => { if (config) preloadSegmentImages(); });
 })();
- 
