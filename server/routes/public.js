@@ -157,6 +157,15 @@ function insertLeadAndSync(c, config, data, winnerSegment, now, voucherCode) {
       .filter((def) => data.customFieldsToStore[def.id])
       .map((def) => `${(def.label && def.label.ar) || def.id}: ${data.customFieldsToStore[def.id]}`)
       .join('، ');
+    // نفس البيانات لكن كـ"خريطة" (اسم الحقل -> القيمة) عشان جوجل شيت يقدر ياخد كل حقل في عمود لوحده
+    // بدل ما يفضل مضطر يقطّع نص واحد مجمّع (أدق وأضمن من تقطيع النص)
+    const customFieldsMap = {};
+    (data.customFieldsDefs || []).forEach((def) => {
+      if (data.customFieldsToStore[def.id]) {
+        const label = ((def.label && def.label.ar) || def.id).trim();
+        customFieldsMap[label] = data.customFieldsToStore[def.id];
+      }
+    });
     sendToGoogleSheet(webhookUrl, {
       createdAt: new Date(now).toLocaleString('ar-EG', { timeZone: 'Africa/Cairo' }),
       campaignName: c.name,
@@ -166,6 +175,7 @@ function insertLeadAndSync(c, config, data, winnerSegment, now, voucherCode) {
       email: data.email,
       interests: data.interests,
       customFieldsText,
+      customFieldsMap,
       resultLabel: winnerSegment.label ? winnerSegment.label.ar : '',
       resultType: winnerSegment.type,
       voucherCode: voucherCode || ''
