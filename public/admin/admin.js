@@ -1067,6 +1067,15 @@
       fieldNumber(uiLang === 'ar' ? 'تتكرر كل كام ثانية' : 'Repeat every (seconds)', 'sound.welcome.intervalSec', { min: 5, max: 300 }),
       el('button', { class: 'btn btn-sm btn-ghost', style: 'margin-top:8px', onclick: () => previewSpeak(getPath(state.cfg, 'sound.welcome.message.' + uiLang), uiLang) }, [uiLang === 'ar' ? '🔊 جرب الصوت' : '🔊 Preview'])
     ]));
+    c.appendChild(el('div', { class: 'section-title' }, [uiLang === 'ar' ? '📝 رسالة عند دخول شاشة تسجيل البيانات' : '📝 Message on entering the registration screen']));
+    c.appendChild(el('p', { class: 'hint' }, [uiLang === 'ar'
+                                              ? 'هتتقال بصوت (Text-to-Speech) مرة واحدة أول ما العميل يدخل شاشة تسجيل البيانات. اسيبها فاضية لو مش عايز صوت هنا.'
+                                              : "Spoken (Text-to-Speech) once, right when the customer enters the registration screen. Leave it empty if you don't want a voice message here."]));
+    c.appendChild(el('div', { class: 'item-card' }, [
+      fieldToggle(uiLang === 'ar' ? 'مفعّلة' : 'Enabled', 'sound.formMessage.enabled'),
+      fieldBilingual(uiLang === 'ar' ? 'نص الرسالة' : 'Message text', 'sound.formMessage.message'),
+      el('button', { class: 'btn btn-sm btn-ghost', style: 'margin-top:8px', onclick: () => previewSpeak(getPath(state.cfg, 'sound.formMessage.message.' + uiLang), uiLang) }, [uiLang === 'ar' ? '🔊 جرب الصوت' : '🔊 Preview'])
+      ]));
 
     c.appendChild(el('div', { class: 'section-title' }, [uiLang === 'ar' ? '🗣️ نداء العميل بالاسم وقت النتيجة' : '🗣️ Announcing the customer by name at result time']));
     c.appendChild(el('p', { class: 'hint' }, [uiLang === 'ar'
