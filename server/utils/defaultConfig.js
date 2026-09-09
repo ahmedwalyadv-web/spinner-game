@@ -90,7 +90,12 @@ function defaultCampaignConfig(name) {
         winInstructions: { ar: '', en: '' }
       },
       spinSound: { enabled: true, url: '' }, // url فاضي = يستخدم صوت "تكة" افتراضي مولّد تلقائيًا
-      winSound: { enabled: true, url: '' } // url فاضي = يستخدم صوت احتفال افتراضي مولّد تلقائيًا
+      winSound: { enabled: true, url: '' }, // url فاضي = يستخدم صوت احتفال افتراضي مولّد تلقائيًا
+      formMessage: {
+        // رسالة تتقال بصوت (Text-to-Speech) مرة واحدة أول ما العميل يدخل شاشة تسجيل البيانات - فاضية بشكل افتراضي، الأدمن بيكتبها
+        enabled: true,
+          message: { ar: '', en: '' }
+  }
     },
     wheel: {
       sizePct: 90,
