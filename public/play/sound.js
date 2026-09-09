@@ -8,7 +8,7 @@
   let audioCtx = null;
   let welcomeTimer = null;
   let currentSpinAudioEl = null;
-  let activeSpeechAudio = null; // آخر عنصر Audio بيشغّل صوت جوجل الخارجي - محتاجينه عشان نوقفه لو غيّرنا الشاشة فجأة
+ let activeSpeechAudio = null; // آخر عنصر Audio بيشغّل صوت جوجل الخارجي - محتاجينه عشان نوقفه لو غيّرنا الشاشة فجأة
 
   function ensureAudioCtx() {
     if (!audioCtx) {
@@ -149,6 +149,14 @@
     try { window.speechSynthesis.cancel(); } catch (e) {}
     if (activeSpeechAudio) { try { activeSpeechAudio.pause(); } catch (e) {} activeSpeechAudio = null; }
   }
+   /* ============ رسالة توديع/ترحيب مرة واحدة وقت دخول شاشة تسجيل البيانات ============ */
+   function speakFormMessage(lang) {
+      const f = cfg && cfg.sound && cfg.sound.formMessage;
+      if (!soundOn() || !f || f.enabled === false) return;
+      const text = (f.message && (f.message[lang] || f.message.ar)) || '';
+      if (!text) return;
+      speak(text, lang);
+   }
 
   /* ============ نداء العميل بالاسم وقت ظهور النتيجة (+ تعليمات إضافية اختيارية بعد الفوز) ============ */
   function speakResult(name, prizeText, isWin, lang) {
@@ -255,6 +263,7 @@
     unlock,
     startWelcomeLoop,
     stopWelcomeLoop,
+     speakFormMessage,
     speakResult,
     startSpinSound,
     stopSpinSound,
