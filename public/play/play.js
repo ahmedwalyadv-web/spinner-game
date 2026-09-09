@@ -57,6 +57,7 @@
       const isWelcomeScreen = name === 'intro' || (isSpinFirst() && name === 'wheel');
       if (isWelcomeScreen) GameSound.startWelcomeLoop(playerLang);
       else GameSound.stopWelcomeLoop();
+      if (name === 'form') GameSound.speakFormMessage(playerLang);
     }
   }
  
