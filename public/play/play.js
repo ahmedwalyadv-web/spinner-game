@@ -66,7 +66,11 @@
     try {
       const res = await fetch('/api/public/campaigns/' + encodeURIComponent(slug));
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'حدث خطأ');
+      if (!res.ok) {
+        const err = new Error(data.error || 'حدث خطأ');
+        err.closedMessage = data.closedMessage;
+        throw err;
+      }
       config = data.config;
       campaignId = data.id;
       playerLang = config.meta.defaultLanguage || 'ar';
@@ -81,7 +85,8 @@
     } catch (e) {
       $('screen-loading').hidden = true;
       $('screen-error').hidden = false;
-      $('error-message').textContent = e.message || 'الرابط غير صحيح أو الكامبين متوقف';
+      const customClosedText = e.closedMessage && t(e.closedMessage);
+      $('error-message').textContent = customClosedText || e.message || 'الرابط غير صحيح أو الكامبين متوقف';
     }
   }
  
