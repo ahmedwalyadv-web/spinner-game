@@ -189,7 +189,11 @@ function insertLeadAndSync(c, config, data, winnerSegment, now, voucherCode) {
 router.get('/campaigns/:slug', (req, res) => {
   const c = db.prepare('SELECT * FROM campaigns WHERE slug = ?').get(req.params.slug);
   if (!c) return res.status(404).json({ error: 'الرابط غير صحيح' });
-  if (!c.is_active) return res.status(403).json({ error: 'هذا الكامبين متوقف حاليًا' });
+  if (!c.is_active) {
+    // لو الأدمن كاتب رسالة إغلاق مخصصة للكامبين ده، نرجعها عشان صفحة اللعب تعرضها بدل الرسالة العامة
+    const inactiveConfig = mergeConfigDefaults(JSON.parse(c.config));
+    return res.status(403).json({ error: 'هذا الكامبين متوقف حاليًا', closedMessage: inactiveConfig.closedMessage });
+  }
 
   const config = mergeConfigDefaults(JSON.parse(c.config));
   res.json({
