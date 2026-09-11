@@ -6,6 +6,8 @@ function defaultCampaignConfig(name) {
       language: 'both', // 'ar' | 'en' | 'both' -> both يظهر زرار تبديل لغة للاعب
       defaultLanguage: 'ar'
     },
+    // النص اللي يظهر للعميل لو فتح رابط اللعبة والكامبين متوقف (السويتش "مفعّل" مقفول) - فاضي = يظهر رسالة النظام الافتراضية
+    closedMessage: { ar: '', en: '' },
     theme: {
       backgroundColor: '#0f1223',
       backgroundImage: '',
