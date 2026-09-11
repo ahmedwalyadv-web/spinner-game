@@ -605,6 +605,13 @@
     ]));
     c.appendChild(el('div', { class: 'section-title' }, [uiLang === 'ar' ? 'خلفية عامة (اختياري)' : 'Background image (optional)']));
     c.appendChild(fieldUpload(uiLang === 'ar' ? 'صورة خلفية للعبة كلها' : 'Background image for the whole game', 'theme.backgroundImage', { rerenderTab: 'theme' }));
+    c.appendChild(el('div', { class: 'section-title' }, [uiLang === 'ar' ? '📴 رسالة إغلاق الفعالية' : '📴 Event closed message']));
+    c.appendChild(el('p', { class: 'hint' }, [uiLang === 'ar'
+                                              ? 'تظهر للعميل لو فتح رابط اللعبة والكامبين ده متوقف (السويتش "مفعّل" مقفول). اسيبها فاضية لو عايز تفضل الرسالة الافتراضية.'
+                                              : 'Shown to the customer if they open the game link while this campaign is turned off (the "Enabled" switch is off). Leave it empty to keep the default message.']));
+    c.appendChild(el('div', { class: 'item-card' }, [
+      fieldBilingual(uiLang === 'ar' ? 'نص رسالة الإغلاق' : 'Closed message text', 'closedMessage')
+      ]));
   };
 
   /* ============ تبويب: الشعارات ============ */
